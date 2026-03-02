@@ -59,6 +59,12 @@
 </head>
 <body class="min-h-screen text-gray-800">
 
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(4px);">
+        <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-[#0054a6] mb-2"></i>
+        <p class="font-bold text-slate-600">កំពុងទាញយកទិន្នន័យពី Cloud...</p>
+    </div>
+
     <nav class="bg-[#0054a6] text-white p-4 shadow-lg sticky top-0 z-50 no-print">
         <div class="container mx-auto flex flex-wrap justify-between items-center gap-4">
             <div class="flex items-center gap-4">
@@ -69,17 +75,17 @@
                 
                 <div class="flex items-center bg-white/10 rounded px-2 py-1 border border-white/20">
                     <span class="text-xs mr-2 text-indigo-100">ថ្នាក់៖</span>
-                    <select id="class_selector" onchange="changeClass(this.value)" class="bg-transparent text-sm font-bold outline-none text-white cursor-pointer w-32"></select>
-                    <button onclick="createNewClass()" class="ml-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded font-bold" title="បង្កើតថ្នាក់ថ្មី">+</button>
-                    <button onclick="editClassName()" class="ml-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-bold" title="ប្តូរឈ្មោះថ្នាក់">✎</button>
+                    <select id="class_selector" onchange="window.changeClass(this.value)" class="bg-transparent text-sm font-bold outline-none text-white cursor-pointer w-32"></select>
+                    <button onclick="window.createNewClass()" class="ml-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded font-bold" title="បង្កើតថ្នាក់ថ្មី">+</button>
+                    <button onclick="window.editClassName()" class="ml-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-bold" title="ប្តូរឈ្មោះថ្នាក់">✎</button>
                 </div>
             </div>
 
             <div class="flex flex-wrap gap-4 text-sm font-bold items-center">
-                <button onclick="showSection('attendance')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="list" class="w-4 h-4"></i> វត្តមានបញ្ជី</button>
-                <button onclick="showSection('seating')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout" class="w-4 h-4"></i> វត្តមានប្លង់តុ</button>
-                <button onclick="showSection('reports')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> របាយការណ៍</button>
-                <button onclick="showSection('dashboard')" class="hover:text-yellow-400 flex items-center gap-1 hidden md:flex"><i data-lucide="pie-chart" class="w-4 h-4"></i> ទិន្នន័យ</button>
+                <button onclick="window.showSection('attendance')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="list" class="w-4 h-4"></i> វត្តមានបញ្ជី</button>
+                <button onclick="window.showSection('seating')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout" class="w-4 h-4"></i> វត្តមានប្លង់តុ</button>
+                <button onclick="window.showSection('reports')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> របាយការណ៍</button>
+                <button onclick="window.showSection('dashboard')" class="hover:text-yellow-400 flex items-center gap-1 hidden md:flex"><i data-lucide="pie-chart" class="w-4 h-4"></i> ទិន្នន័យ</button>
             </div>
         </div>
     </nav>
@@ -96,7 +102,7 @@
                     </div>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
                         <label class="font-bold text-sm text-gray-700">កាលបរិច្ឆេទ៖</label>
-                        <input type="date" id="attendance_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="syncDate(this.value)">
+                        <input type="date" id="attendance_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="window.syncDate(this.value)">
                         <div id="lock_status_container"></div>
                     </div>
                 </div>
@@ -108,7 +114,7 @@
 
                 <div id="attendance-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                 
-                <button id="btn_save_attendance" onclick="saveAttendance()" class="mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
+                <button id="btn_save_attendance" onclick="window.saveAttendance()" class="mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
                     <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ
                 </button>
             </div>
@@ -124,7 +130,7 @@
                     </div>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
                         <label class="font-bold text-sm text-gray-700">កាលបរិច្ឆេទ៖</label>
-                        <input type="date" id="seating_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="syncDate(this.value)">
+                        <input type="date" id="seating_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="window.syncDate(this.value)">
                         <div id="lock_status_container_seating"></div>
                     </div>
                 </div>
@@ -137,13 +143,13 @@
                     </div>
 
                     <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                        <button id="toggleModeBtn" onclick="toggleSeatingMode()" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-white bg-[#7c3aed] hover:bg-[#6d28d9] transition flex items-center gap-2 text-sm shadow">
+                        <button id="toggleModeBtn" onclick="window.toggleSeatingMode()" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-white bg-[#7c3aed] hover:bg-[#6d28d9] transition flex items-center gap-2 text-sm shadow">
                             <i data-lucide="edit" class="w-4 h-4"></i> រៀបចំប្លង់តុសិស្ស
                         </button>
 
                         <!-- Edit Tools -->
                         <div id="editTools" class="hidden flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl">
-                            <button onclick="toggleSeatingMode()" class="px-3 py-1.5 text-white bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-1 text-sm font-bold shadow whitespace-nowrap">
+                            <button onclick="window.toggleSeatingMode()" class="px-3 py-1.5 text-white bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-1 text-sm font-bold shadow whitespace-nowrap">
                                 <i data-lucide="check" class="w-4 h-4"></i> រួចរាល់
                             </button>
                             
@@ -152,7 +158,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                                     <i data-lucide="layout-template" class="w-3.5 h-3.5 text-gray-400"></i>
                                 </div>
-                                <select id="layoutSelect" onchange="updateGridConfig()" class="appearance-none bg-white pl-8 pr-8 py-1.5 rounded-lg border text-xs font-bold outline-none cursor-pointer w-[150px]">
+                                <select id="layoutSelect" onchange="window.updateGridConfig()" class="appearance-none bg-white pl-8 pr-8 py-1.5 rounded-lg border text-xs font-bold outline-none cursor-pointer w-[150px]">
                                     <option value="grid">ប្លង់ធម្មតា</option>
                                     <option value="u-shape">រាង U</option>
                                     <option value="group-4">ក្រុម ៤នាក់</option>
@@ -166,15 +172,15 @@
 
                             <div class="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border">
                                 <span class="text-xs text-gray-500">តុ:</span>
-                                <input type="number" id="inputTables" oninput="updateGridConfig()" value="20" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
+                                <input type="number" id="inputTables" oninput="window.updateGridConfig()" value="20" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
                             </div>
                             <div class="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border">
                                 <span class="text-xs text-gray-500">ជួរ:</span>
-                                <input type="number" id="inputCols" oninput="updateGridConfig()" value="4" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
+                                <input type="number" id="inputCols" oninput="window.updateGridConfig()" value="4" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
                             </div>
                             
                             <div class="relative">
-                                <select id="seatsPerTable" onchange="updateGridConfig()" class="appearance-none bg-white px-3 py-1.5 pr-8 rounded-lg border text-xs font-bold outline-none cursor-pointer">
+                                <select id="seatsPerTable" onchange="window.updateGridConfig()" class="appearance-none bg-white px-3 py-1.5 pr-8 rounded-lg border text-xs font-bold outline-none cursor-pointer">
                                     <option value="2">២ នាក់/តុ</option>
                                     <option value="1">១ នាក់/តុ</option>
                                 </select>
@@ -203,7 +209,7 @@
                 <!-- Seating Grid -->
                 <div id="tablesGrid" class="grid gap-6 min-w-[600px]"></div>
 
-                <button id="btn_save_attendance_seating" onclick="saveAttendance()" class="mt-10 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
+                <button id="btn_save_attendance_seating" onclick="window.saveAttendance()" class="mt-10 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
                     <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ
                 </button>
             </div>
@@ -238,7 +244,7 @@
                 <div class="lg:col-span-1 bg-white rounded-xl shadow-md overflow-hidden">
                     <div class="p-4 border-b bg-indigo-50 flex justify-between items-center">
                         <h3 class="kh-moul text-sm text-indigo-800">ទិន្នន័យតាមថ្ងៃ</h3>
-                        <input type="date" id="dash_filter_day" class="border p-1 rounded text-xs outline-none" onchange="renderDashboard()">
+                        <input type="date" id="dash_filter_day" class="border p-1 rounded text-xs outline-none" onchange="window.renderDashboard()">
                     </div>
                     <div class="max-h-[500px] overflow-y-auto">
                         <table class="w-full text-xs">
@@ -253,8 +259,8 @@
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="kh-moul text-sm text-[#0054a6]">សង្ខេបប្រចាំខែ</h3>
                         <div class="flex items-center gap-2">
-                            <input type="month" id="dash_filter_month" class="border p-1.5 rounded text-sm outline-none" onchange="renderDashboard()">
-                            <button onclick="generateMonthlyDetailReport()" class="bg-[#0054a6] text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-800 flex items-center gap-1">
+                            <input type="month" id="dash_filter_month" class="border p-1.5 rounded text-sm outline-none" onchange="window.renderDashboard()">
+                            <button onclick="window.generateMonthlyDetailReport()" class="bg-[#0054a6] text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-800 flex items-center gap-1">
                                 <i data-lucide="external-link" class="w-3 h-3"></i> របាយការណ៍លម្អិត
                             </button>
                         </div>
@@ -287,7 +293,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                         <label class="text-sm font-bold text-gray-700">ប្រភេទរបាយការណ៍:</label>
-                        <select id="report_type" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="handleReportTypeChange(); updateReport();">
+                        <select id="report_type" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.handleReportTypeChange(); window.updateReport();">
                             <option value="daily">ប្រចាំថ្ងៃ</option>
                             <option value="monthly" selected>ប្រចាំខែ</option>
                             <option value="semester1">ឆមាសទី ១</option>
@@ -297,21 +303,21 @@
                     </div>
                     <div id="div_daily_select" style="display:none;">
                         <label class="text-sm font-bold text-gray-700">ជ្រើសរើសថ្ងៃ:</label>
-                        <input type="date" id="report_daily_date" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()">
+                        <input type="date" id="report_daily_date" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()">
                     </div>
                     <div id="div_single_month">
                         <label class="text-sm font-bold text-gray-700">ជ្រើសរើសខែ:</label>
-                        <input type="month" id="single_month_input" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()">
+                        <input type="month" id="single_month_input" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()">
                     </div>
                     <div id="div_range_select" class="md:col-span-2 grid grid-cols-2 gap-4" style="display:none;">
-                        <div><label class="text-sm font-bold text-gray-700">ចាប់ពីខែ:</label><input type="month" id="semester_start" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()"></div>
-                        <div><label class="text-sm font-bold text-gray-700">រហូតដល់ខែ:</label><input type="month" id="semester_end" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()"></div>
+                        <div><label class="text-sm font-bold text-gray-700">ចាប់ពីខែ:</label><input type="month" id="semester_start" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()"></div>
+                        <div><label class="text-sm font-bold text-gray-700">រហូតដល់ខែ:</label><input type="month" id="semester_end" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()"></div>
                     </div>
                     <div class="flex items-end gap-2 lg:col-span-2">
-                        <button onclick="generatePDF()" class="bg-red-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-red-700">
+                        <button onclick="window.generatePDF()" class="bg-red-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-red-700">
                             <i data-lucide="file-down" class="w-4 h-4"></i> ទាញយក PDF
                         </button>
-                        <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-green-700">
+                        <button onclick="window.exportToExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-green-700">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> ទាញយក Excel
                         </button>
                     </div>
@@ -361,8 +367,8 @@
             <input type="hidden" id="note_uid"><input type="hidden" id="note_status">
             <textarea id="note_text" class="w-full border p-3 rounded-lg text-sm mb-4 outline-none focus:border-[#0054a6]" placeholder="សូមសរសេរមូលហេតុនៅទីនេះ..." rows="3"></textarea>
             <div class="flex gap-2">
-                <button onclick="confirmMarkWithNote()" class="flex-1 bg-[#0054a6] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-800 transition">យល់ព្រម</button>
-                <button onclick="closeNoteModal()" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-300 transition">បោះបង់</button>
+                <button onclick="window.confirmMarkWithNote()" class="flex-1 bg-[#0054a6] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-800 transition">យល់ព្រម</button>
+                <button onclick="window.closeNoteModal()" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-300 transition">បោះបង់</button>
             </div>
         </div>
     </div>
@@ -375,19 +381,41 @@
                     <i data-lucide="users" class="w-5 h-5 text-blue-600"></i>
                     ជ្រើសរើសសិស្ស
                 </h3>
-                <button onclick="closeStudentModal()" class="p-1 hover:bg-gray-200 rounded-full"><i data-lucide="x" class="w-5 h-5 text-gray-500"></i></button>
+                <button onclick="window.closeStudentModal()" class="p-1 hover:bg-gray-200 rounded-full"><i data-lucide="x" class="w-5 h-5 text-gray-500"></i></button>
             </div>
             <div class="p-3 border-b border-gray-100">
                 <div class="relative">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                    <input type="text" id="studentSearch" onkeyup="filterStudents()" placeholder="ស្វែងរកឈ្មោះ ឬអត្តលេខ..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm">
+                    <input type="text" id="studentSearch" onkeyup="window.filterStudents()" placeholder="ស្វែងរកឈ្មោះ ឬអត្តលេខ..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm">
                 </div>
             </div>
             <div id="studentListContainer" class="overflow-y-auto p-2 flex-1 space-y-1 min-h-[200px]"></div>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const PTEC_APP_ID = "ptec-app";
+        let currentUserId = null;
+
         lucide.createIcons();
         document.getElementById('noteModal').style.display = 'none';
         document.getElementById('studentModal').style.display = 'none';
@@ -420,13 +448,24 @@
         let seatingLayout = {}; 
 
         // MAIN INITIALIZATION LOGIC
-        window.onload = () => {
-            initApp();
-            showSection('attendance'); 
-        };
+        document.addEventListener('DOMContentLoaded', () => {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    await initApp();
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    showSection('attendance');
+                } else {
+                    signInAnonymously(auth).catch(err => {
+                        console.error(err);
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                    });
+                }
+            });
+        });
 
-        function initApp() {
-            loadClassData();
+        async function initApp() {
+            await loadClassData();
             renderClassSelector();
             
             const today = new Date().toISOString().split('T')[0];
@@ -444,20 +483,47 @@
             loadAttendance();
         }
 
-        function loadClassData() {
-            const globalStudents = JSON.parse(localStorage.getItem('students') || '[]');
-            students = globalStudents.map(s => ({
-                uid: s.id ? String(s.id) : 'N/A',
-                name: s.name,
-                gender: s.gender,
-                dob: s.dob || '-',
-                parent: s.father || s.mother || '-',
-                phone: s.phone || '-',
-                photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
-            }));
-            localStorage.setItem(getKey('students_db'), JSON.stringify(students));
+        async function loadClassData() {
+            // Fetch students directly from Firebase to solve the "names not showing" issue
+            try {
+                const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+                const studentsSnap = await getDocs(studentsRef);
+                const loadedStudents = [];
+                
+                studentsSnap.forEach(docSnap => {
+                    const s = docSnap.data();
+                    loadedStudents.push({
+                        uid: s.id ? String(s.id) : 'N/A',
+                        name: s.name || 'គ្មានឈ្មោះ',
+                        gender: s.gender || '-',
+                        dob: s.dob || '-',
+                        parent: s.father || s.mother || '-',
+                        phone: s.phone || '-',
+                        photo: s.photo || `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`,
+                        createdAt: s.createdAt || 0
+                    });
+                });
+                
+                // Sort array to maintain consistency
+                loadedStudents.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                students = loadedStudents;
+                
+            } catch (error) {
+                console.error("Error fetching students from Firebase:", error);
+                // Fallback to local storage
+                const globalStudents = JSON.parse(localStorage.getItem('students') || '[]');
+                students = globalStudents.map(s => ({
+                    uid: s.id ? String(s.id) : 'N/A',
+                    name: s.name,
+                    gender: s.gender,
+                    dob: s.dob || '-',
+                    parent: s.father || s.mother || '-',
+                    phone: s.phone || '-',
+                    photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
+                }));
+            }
 
-            // Load from profile.html's storage dynamically instead of custom setup section
+            // Load from profile.html's storage dynamically
             const teacherProfile = JSON.parse(localStorage.getItem('teacherProfile')) || {};
             
             classConfig = {
@@ -472,19 +538,17 @@
 
             const cls = classList.find(c => c.id === currentClassId);
             if(cls) {
-                // If it's the default app class name, sync it with the profile
                 if (cls.name === 'ថ្នាក់ដើម' && teacherProfile.class_name) {
                     cls.name = teacherProfile.class_name;
                     saveClassList();
                 }
-                // Ensure print reports uses the currently selected class name
                 classConfig.className = cls.name;
             }
 
+            // Kept reading from local storage so previous attendance inputs are not lost
             attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
             lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
 
-            // Load Seating layout specific to this class
             seatingLayout = JSON.parse(localStorage.getItem(getKey('seatingLayout'))) || {};
             const seatConfig = JSON.parse(localStorage.getItem(getKey('seatingConfig'))) || {
                 totalTables: 20, gridCols: 4, seatsPerTable: 2, layout: 'grid'
@@ -571,9 +635,8 @@
 
             const isLocked = lockedDates.includes(date);
 
-            // Update UI Restrictions
             const msgSunday = '<span class="text-red-500 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 flex items-center gap-1"><i data-lucide="calendar-off" class="w-4 h-4"></i>ថ្ងៃអាទិត្យ ឈប់សម្រាក</span>';
-            const msgLocked = '<button onclick="unlockAttendance()" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg flex items-center gap-1 text-xs font-bold border border-red-200 transition" title="ដោះសោ"><i data-lucide="lock" class="w-4 h-4"></i></button>';
+            const msgLocked = '<button onclick="window.unlockAttendance()" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg flex items-center gap-1 text-xs font-bold border border-red-200 transition" title="ដោះសោ"><i data-lucide="lock" class="w-4 h-4"></i></button>';
             
             const lock1 = document.getElementById('lock_status_container');
             const lock2 = document.getElementById('lock_status_container_seating');
@@ -618,9 +681,9 @@
                             <p class="font-bold text-[#0054a6] truncate w-32 md:w-40">${s.name}</p>
                             <p class="text-xs text-gray-400 font-mono mb-2">ID: ${s.uid}</p>
                             <div class="flex gap-2">
-                                <button onclick="mark('${s.uid}', 'P')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('P', 'bg-green-600 ring-green-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>មក</button>
-                                <button onclick="mark('${s.uid}', 'L')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('L', 'bg-yellow-500 ring-yellow-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>ច្បាប់</button>
-                                <button onclick="mark('${s.uid}', 'A')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('A', 'bg-red-600 ring-red-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>អវត្ត</button>
+                                <button onclick="window.mark('${s.uid}', 'P')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('P', 'bg-green-600 ring-green-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>មក</button>
+                                <button onclick="window.mark('${s.uid}', 'L')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('L', 'bg-yellow-500 ring-yellow-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>ច្បាប់</button>
+                                <button onclick="window.mark('${s.uid}', 'A')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('A', 'bg-red-600 ring-red-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>អវត្ត</button>
                             </div>
                         </div>
                     </div>`;
@@ -710,7 +773,7 @@
             }
         }
 
-        // ================= SEATING PLAN LOGIC (Upgraded) =================
+        // ================= SEATING PLAN LOGIC =================
         function updateGridConfig() {
             TOTAL_TABLES = parseInt(document.getElementById('inputTables').value) || 0;
             GRID_COLS = parseInt(document.getElementById('inputCols').value) || 1;
@@ -855,9 +918,9 @@
                 const statusClass = `status-${status}`;
                 
                 return `
-                    <div id="${seatId}" onclick="handleSeatClick('${seatId}')" 
+                    <div id="${seatId}" onclick="window.handleSeatClick('${seatId}')" 
                         class="seat filled ${extraClasses} rounded-xl p-1 flex flex-col items-center justify-center text-center gap-0.5 relative overflow-hidden ${statusClass}">
-                        <div class="remove-btn" onclick="event.stopPropagation(); removeStudentFromSeat('${seatId}')">
+                        <div class="remove-btn" onclick="event.stopPropagation(); window.removeStudentFromSeat('${seatId}')">
                             <i data-lucide="x" class="w-3 h-3"></i>
                         </div>
                         <div class="font-bold text-[11px] leading-tight line-clamp-2" title="${student.name}">${student.name}</div>
@@ -866,7 +929,7 @@
                 `;
             } else {
                 return `
-                    <div id="${seatId}" onclick="handleSeatClick('${seatId}')" 
+                    <div id="${seatId}" onclick="window.handleSeatClick('${seatId}')" 
                         class="seat empty ${extraClasses} rounded-xl flex items-center justify-center text-xs font-bold bg-white">
                         <span>+</span>
                     </div>
@@ -1204,6 +1267,18 @@
             localStorage.setItem('temp_report_data', JSON.stringify(reportData));
             window.open('monthly-report.html', '_blank');
         }
+        
+        // Export functions to Window so HTML inline-events (onclick, onchange) can access them
+        window.changeClass = changeClass; window.createNewClass = createNewClass; window.editClassName = editClassName;
+        window.showSection = showSection; window.syncDate = syncDate; window.mark = mark;
+        window.confirmMarkWithNote = confirmMarkWithNote; window.closeNoteModal = closeNoteModal;
+        window.saveAttendance = saveAttendance; window.unlockAttendance = unlockAttendance;
+        window.toggleSeatingMode = toggleSeatingMode; window.updateGridConfig = updateGridConfig;
+        window.handleSeatClick = handleSeatClick; window.removeStudentFromSeat = removeStudentFromSeat;
+        window.openStudentModal = openStudentModal; window.closeStudentModal = closeStudentModal;
+        window.filterStudents = filterStudents; window.renderDashboard = renderDashboard;
+        window.handleReportTypeChange = handleReportTypeChange; window.updateReport = updateReport;
+        window.generatePDF = generatePDF; window.exportToExcel = exportToExcel; window.generateMonthlyDetailReport = generateMonthlyDetailReport;
     </script>
 </body>
 </html>
