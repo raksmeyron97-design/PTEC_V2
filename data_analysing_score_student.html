@@ -131,7 +131,7 @@
                         <option value="2027-2028" class="text-gray-800">ឆ្នាំ ២០២៧-២០២៨</option>
                         <option value="2028-2029" class="text-gray-800">ឆ្នាំ ២០២៨-២០២៩</option>
                         <option value="2029-2030" class="text-gray-800">ឆ្នាំ ២០២៩-២០៣០</option>
-                        <option value="2030-2031" class="text-gray-800">ឆ្នាំ ២០៣០-២០៣១</option>
+                        <option value="2030-2031" class="text-gray-800">ឆ្នាំ ២០៣0-២០៣១</option>
                     </select>
                 </div>
                 <button onclick="window.loadAnalyticsData()" class="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-lg transition" title="Refresh Data">
@@ -384,9 +384,9 @@
 
     <!-- Firebase System & Core Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -404,6 +404,7 @@
         const db = getFirestore(app);
 
         // --- Globals & Chart Instances ---
+        const PTEC_APP_ID = "ptec-app";
         let currentUserId = null;
         let students = [];
         let scoresHistory = {};     // { "nov": { uid: { math: 10, ... } }, "dec": ... }
@@ -458,12 +459,15 @@
             const year = document.getElementById('yearSelect').value;
             
             try {
-                // 1. Fetch Students
-                const studentsSnap = await getDocs(collection(db, "students"));
+                // 1. Fetch Students (Updated to use secure user-specific path)
                 let loadedStudents = [];
-                studentsSnap.forEach(doc => {
-                    loadedStudents.push({ id: doc.id, uid: doc.id, ...doc.data() });
-                });
+                if (currentUserId) {
+                    const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+                    const studentsSnap = await getDocs(studentsRef);
+                    studentsSnap.forEach(doc => {
+                        loadedStudents.push({ id: doc.id, uid: doc.id, ...doc.data() });
+                    });
+                }
                 
                 if (loadedStudents.length > 0) {
                     students = loadedStudents;
@@ -486,8 +490,19 @@
                 scoresHistory = {};
                 for (const month of monthsOrder) {
                     const docId = `${year}_${month}`;
-                    const snap = await getDoc(doc(db, "scores", docId));
-                    if (snap.exists()) {
+                    let snap = null;
+
+                    if (currentUserId) {
+                        // Priority 1: Check new secure path
+                        snap = await getDoc(doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'scores', docId)).catch(() => null);
+                        
+                        // Priority 2: Check old generic root path just in case scoring page hasn't migrated
+                        if (!snap || !snap.exists()) {
+                            snap = await getDoc(doc(db, "scores", docId)).catch(() => null);
+                        }
+                    }
+
+                    if (snap && snap.exists()) {
                         scoresHistory[month] = snap.data();
                     } else {
                         // Fallback local
@@ -499,20 +514,20 @@
                     }
                 }
 
-                // 3. Fetch Attendance
+                // 3. Fetch Attendance (Updated to safely fetch from users > currentUserId > data)
                 attendanceHistory = {};
                 let currentClassId = localStorage.getItem('current_class_id') || 'default';
                 
                 if (currentUserId) {
                     // Try to get class info from metadata
-                    const metaSnap = await getDoc(doc(db, "users", currentUserId, "data", "metadata"));
-                    if (metaSnap.exists() && metaSnap.data().currentClassId) {
+                    const metaSnap = await getDoc(doc(db, "users", currentUserId, "data", "metadata")).catch(() => null);
+                    if (metaSnap && metaSnap.exists() && metaSnap.data().currentClassId) {
                         currentClassId = metaSnap.data().currentClassId;
                     }
                     
                     // Fetch attendance
-                    const classSnap = await getDoc(doc(db, "users", currentUserId, "data", `class_${currentClassId}`));
-                    if (classSnap.exists() && classSnap.data().attendanceHistory) {
+                    const classSnap = await getDoc(doc(db, "users", currentUserId, "data", `class_${currentClassId}`)).catch(() => null);
+                    if (classSnap && classSnap.exists() && classSnap.data().attendanceHistory) {
                         attendanceHistory = classSnap.data().attendanceHistory;
                     }
                 }
