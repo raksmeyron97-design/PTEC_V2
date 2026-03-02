@@ -34,15 +34,18 @@
         .role-title { font-family: 'Moul', cursive; font-size: 11pt; }
         #report_title_display { text-decoration: underline; text-underline-offset: 5px; }
 
-        /* General Modal */
+        /* General Modal & Loading */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center; }
+        #loading-overlay { display: flex; position: fixed; inset: 0; background: #f0f4f8; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; gap: 15px; }
+        .spinner { border: 4px solid rgba(0, 84, 166, 0.2); border-left-color: #0054a6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .status-badge { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: bold; }
         .bg-p { background: #dcfce7; color: #166534; }
         .bg-l { background: #fef9c3; color: #854d0e; }
         .bg-a { background: #fee2e2; color: #991b1b; }
 
-        /* --- Seating Plan Styles (Imported from standalone) --- */
+        /* --- Seating Plan Styles --- */
         .seat { transition: all 0.2s; cursor: pointer; user-select: none; }
         .seat.empty { border: 2px dashed #cbd5e1; background: #f1f5f9; color: #94a3b8; }
         .seat.empty:hover { border-color: var(--primary); background: #e0f2fe; color: var(--primary); transform: scale(1.05); z-index: 50; }
@@ -59,27 +62,34 @@
 </head>
 <body class="min-h-screen text-gray-800">
 
+    <!-- Initial Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="kh-moul text-[#0054a6] text-lg">កំពុងភ្ជាប់ទិន្នន័យ...</div>
+        <div class="text-sm text-gray-500 font-sans">ភ្ជាប់ជាមួយ Firebase Cloud Storage</div>
+    </div>
+
     <nav class="bg-[#0054a6] text-white p-4 shadow-lg sticky top-0 z-50 no-print">
         <div class="container mx-auto flex flex-wrap justify-between items-center gap-4">
             <div class="flex items-center gap-4">
                 <a href="index.html" class="flex items-center gap-2 hover:text-yellow-400 transition font-bold text-sm bg-white/10 px-3 py-1.5 rounded-lg">
                     <i data-lucide="home" class="w-4 h-4"></i> ទំព័រដើម
                 </a>
-                <h1 class="kh-moul text-lg hidden lg:block">ប្រព័ន្ធគ្រប់គ្រងវត្តមាន</h1>
+                <h1 class="kh-moul text-lg hidden lg:block">ប្រព័ន្ធគ្រប់គ្រងវត្តមាន <span class="text-xs bg-green-500 px-2 py-1 rounded ml-2 font-sans align-middle">Online</span></h1>
                 
                 <div class="flex items-center bg-white/10 rounded px-2 py-1 border border-white/20">
                     <span class="text-xs mr-2 text-indigo-100">ថ្នាក់៖</span>
-                    <select id="class_selector" onchange="changeClass(this.value)" class="bg-transparent text-sm font-bold outline-none text-white cursor-pointer w-32"></select>
-                    <button onclick="createNewClass()" class="ml-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded font-bold" title="បង្កើតថ្នាក់ថ្មី">+</button>
-                    <button onclick="editClassName()" class="ml-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-bold" title="ប្តូរឈ្មោះថ្នាក់">✎</button>
+                    <select id="class_selector" onchange="window.changeClass(this.value)" class="bg-transparent text-sm font-bold outline-none text-white cursor-pointer w-32"></select>
+                    <button onclick="window.createNewClass()" class="ml-2 bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded font-bold" title="បង្កើតថ្នាក់ថ្មី">+</button>
+                    <button onclick="window.editClassName()" class="ml-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-bold" title="ប្តូរឈ្មោះថ្នាក់">✎</button>
                 </div>
             </div>
 
             <div class="flex flex-wrap gap-4 text-sm font-bold items-center">
-                <button onclick="showSection('attendance')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="list" class="w-4 h-4"></i> វត្តមានបញ្ជី</button>
-                <button onclick="showSection('seating')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout" class="w-4 h-4"></i> វត្តមានប្លង់តុ</button>
-                <button onclick="showSection('reports')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> របាយការណ៍</button>
-                <button onclick="showSection('dashboard')" class="hover:text-yellow-400 flex items-center gap-1 hidden md:flex"><i data-lucide="pie-chart" class="w-4 h-4"></i> ទិន្នន័យ</button>
+                <button onclick="window.showSection('attendance')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="list" class="w-4 h-4"></i> វត្តមានបញ្ជី</button>
+                <button onclick="window.showSection('seating')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout" class="w-4 h-4"></i> វត្តមានប្លង់តុ</button>
+                <button onclick="window.showSection('reports')" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> របាយការណ៍</button>
+                <button onclick="window.showSection('dashboard')" class="hover:text-yellow-400 flex items-center gap-1 hidden md:flex"><i data-lucide="pie-chart" class="w-4 h-4"></i> ទិន្នន័យ</button>
             </div>
         </div>
     </nav>
@@ -87,7 +97,7 @@
     <div class="container mx-auto p-4 max-w-6xl mt-4">
         
         <!-- ================= ATTENDANCE LIST SECTION ================= -->
-        <section id="attendance-section" class="no-print">
+        <section id="attendance-section" class="no-print hidden">
             <div class="bg-white p-6 rounded-xl shadow-md mb-6 border-t-4 border-[#0054a6]">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div class="flex items-center gap-3">
@@ -96,7 +106,7 @@
                     </div>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
                         <label class="font-bold text-sm text-gray-700">កាលបរិច្ឆេទ៖</label>
-                        <input type="date" id="attendance_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="syncDate(this.value)">
+                        <input type="date" id="attendance_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="window.syncDate(this.value)">
                         <div id="lock_status_container"></div>
                     </div>
                 </div>
@@ -108,8 +118,8 @@
 
                 <div id="attendance-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                 
-                <button id="btn_save_attendance" onclick="saveAttendance()" class="mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
-                    <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ
+                <button id="btn_save_attendance" onclick="window.saveAttendance()" class="mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
+                    <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះទៅកាន់អនឡាញ
                 </button>
             </div>
         </section>
@@ -124,7 +134,7 @@
                     </div>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
                         <label class="font-bold text-sm text-gray-700">កាលបរិច្ឆេទ៖</label>
-                        <input type="date" id="seating_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="syncDate(this.value)">
+                        <input type="date" id="seating_date" class="border p-2 rounded font-bold text-[#0054a6] outline-none" onchange="window.syncDate(this.value)">
                         <div id="lock_status_container_seating"></div>
                     </div>
                 </div>
@@ -137,13 +147,13 @@
                     </div>
 
                     <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                        <button id="toggleModeBtn" onclick="toggleSeatingMode()" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-white bg-[#7c3aed] hover:bg-[#6d28d9] transition flex items-center gap-2 text-sm shadow">
+                        <button id="toggleModeBtn" onclick="window.toggleSeatingMode()" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-white bg-[#7c3aed] hover:bg-[#6d28d9] transition flex items-center gap-2 text-sm shadow">
                             <i data-lucide="edit" class="w-4 h-4"></i> រៀបចំប្លង់តុសិស្ស
                         </button>
 
                         <!-- Edit Tools -->
                         <div id="editTools" class="hidden flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl">
-                            <button onclick="toggleSeatingMode()" class="px-3 py-1.5 text-white bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-1 text-sm font-bold shadow whitespace-nowrap">
+                            <button onclick="window.toggleSeatingMode()" class="px-3 py-1.5 text-white bg-green-500 hover:bg-green-600 rounded-lg transition flex items-center gap-1 text-sm font-bold shadow whitespace-nowrap">
                                 <i data-lucide="check" class="w-4 h-4"></i> រួចរាល់
                             </button>
                             
@@ -152,7 +162,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                                     <i data-lucide="layout-template" class="w-3.5 h-3.5 text-gray-400"></i>
                                 </div>
-                                <select id="layoutSelect" onchange="updateGridConfig()" class="appearance-none bg-white pl-8 pr-8 py-1.5 rounded-lg border text-xs font-bold outline-none cursor-pointer w-[150px]">
+                                <select id="layoutSelect" onchange="window.updateGridConfig()" class="appearance-none bg-white pl-8 pr-8 py-1.5 rounded-lg border text-xs font-bold outline-none cursor-pointer w-[150px]">
                                     <option value="grid">ប្លង់ធម្មតា</option>
                                     <option value="u-shape">រាង U</option>
                                     <option value="group-4">ក្រុម ៤នាក់</option>
@@ -166,15 +176,15 @@
 
                             <div class="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border">
                                 <span class="text-xs text-gray-500">តុ:</span>
-                                <input type="number" id="inputTables" oninput="updateGridConfig()" value="20" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
+                                <input type="number" id="inputTables" oninput="window.updateGridConfig()" value="20" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
                             </div>
                             <div class="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border">
                                 <span class="text-xs text-gray-500">ជួរ:</span>
-                                <input type="number" id="inputCols" oninput="updateGridConfig()" value="4" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
+                                <input type="number" id="inputCols" oninput="window.updateGridConfig()" value="4" class="w-10 text-center font-bold outline-none text-sm bg-transparent">
                             </div>
                             
                             <div class="relative">
-                                <select id="seatsPerTable" onchange="updateGridConfig()" class="appearance-none bg-white px-3 py-1.5 pr-8 rounded-lg border text-xs font-bold outline-none cursor-pointer">
+                                <select id="seatsPerTable" onchange="window.updateGridConfig()" class="appearance-none bg-white px-3 py-1.5 pr-8 rounded-lg border text-xs font-bold outline-none cursor-pointer">
                                     <option value="2">២ នាក់/តុ</option>
                                     <option value="1">១ នាក់/តុ</option>
                                 </select>
@@ -203,8 +213,8 @@
                 <!-- Seating Grid -->
                 <div id="tablesGrid" class="grid gap-6 min-w-[600px]"></div>
 
-                <button id="btn_save_attendance_seating" onclick="saveAttendance()" class="mt-10 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
-                    <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ
+                <button id="btn_save_attendance_seating" onclick="window.saveAttendance()" class="mt-10 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg">
+                    <i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះទៅកាន់អនឡាញ
                 </button>
             </div>
         </section>
@@ -238,7 +248,7 @@
                 <div class="lg:col-span-1 bg-white rounded-xl shadow-md overflow-hidden">
                     <div class="p-4 border-b bg-indigo-50 flex justify-between items-center">
                         <h3 class="kh-moul text-sm text-indigo-800">ទិន្នន័យតាមថ្ងៃ</h3>
-                        <input type="date" id="dash_filter_day" class="border p-1 rounded text-xs outline-none" onchange="renderDashboard()">
+                        <input type="date" id="dash_filter_day" class="border p-1 rounded text-xs outline-none" onchange="window.renderDashboard()">
                     </div>
                     <div class="max-h-[500px] overflow-y-auto">
                         <table class="w-full text-xs">
@@ -253,8 +263,8 @@
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="kh-moul text-sm text-[#0054a6]">សង្ខេបប្រចាំខែ</h3>
                         <div class="flex items-center gap-2">
-                            <input type="month" id="dash_filter_month" class="border p-1.5 rounded text-sm outline-none" onchange="renderDashboard()">
-                            <button onclick="generateMonthlyDetailReport()" class="bg-[#0054a6] text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-800 flex items-center gap-1">
+                            <input type="month" id="dash_filter_month" class="border p-1.5 rounded text-sm outline-none" onchange="window.renderDashboard()">
+                            <button onclick="window.generateMonthlyDetailReport()" class="bg-[#0054a6] text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-800 flex items-center gap-1">
                                 <i data-lucide="external-link" class="w-3 h-3"></i> របាយការណ៍លម្អិត
                             </button>
                         </div>
@@ -287,7 +297,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                         <label class="text-sm font-bold text-gray-700">ប្រភេទរបាយការណ៍:</label>
-                        <select id="report_type" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="handleReportTypeChange(); updateReport();">
+                        <select id="report_type" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.handleReportTypeChange(); window.updateReport();">
                             <option value="daily">ប្រចាំថ្ងៃ</option>
                             <option value="monthly" selected>ប្រចាំខែ</option>
                             <option value="semester1">ឆមាសទី ១</option>
@@ -297,21 +307,21 @@
                     </div>
                     <div id="div_daily_select" style="display:none;">
                         <label class="text-sm font-bold text-gray-700">ជ្រើសរើសថ្ងៃ:</label>
-                        <input type="date" id="report_daily_date" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()">
+                        <input type="date" id="report_daily_date" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()">
                     </div>
                     <div id="div_single_month">
                         <label class="text-sm font-bold text-gray-700">ជ្រើសរើសខែ:</label>
-                        <input type="month" id="single_month_input" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()">
+                        <input type="month" id="single_month_input" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()">
                     </div>
                     <div id="div_range_select" class="md:col-span-2 grid grid-cols-2 gap-4" style="display:none;">
-                        <div><label class="text-sm font-bold text-gray-700">ចាប់ពីខែ:</label><input type="month" id="semester_start" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()"></div>
-                        <div><label class="text-sm font-bold text-gray-700">រហូតដល់ខែ:</label><input type="month" id="semester_end" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="updateReport()"></div>
+                        <div><label class="text-sm font-bold text-gray-700">ចាប់ពីខែ:</label><input type="month" id="semester_start" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()"></div>
+                        <div><label class="text-sm font-bold text-gray-700">រហូតដល់ខែ:</label><input type="month" id="semester_end" class="border p-2.5 rounded-lg w-full mt-1 outline-none" onchange="window.updateReport()"></div>
                     </div>
                     <div class="flex items-end gap-2 lg:col-span-2">
-                        <button onclick="generatePDF()" class="bg-red-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-red-700">
+                        <button onclick="window.generatePDF()" class="bg-red-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-red-700">
                             <i data-lucide="file-down" class="w-4 h-4"></i> ទាញយក PDF
                         </button>
-                        <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-green-700">
+                        <button onclick="window.exportToExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg flex-1 font-bold text-sm flex justify-center items-center gap-2 hover:bg-green-700">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> ទាញយក Excel
                         </button>
                     </div>
@@ -361,8 +371,8 @@
             <input type="hidden" id="note_uid"><input type="hidden" id="note_status">
             <textarea id="note_text" class="w-full border p-3 rounded-lg text-sm mb-4 outline-none focus:border-[#0054a6]" placeholder="សូមសរសេរមូលហេតុនៅទីនេះ..." rows="3"></textarea>
             <div class="flex gap-2">
-                <button onclick="confirmMarkWithNote()" class="flex-1 bg-[#0054a6] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-800 transition">យល់ព្រម</button>
-                <button onclick="closeNoteModal()" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-300 transition">បោះបង់</button>
+                <button onclick="window.confirmMarkWithNote()" class="flex-1 bg-[#0054a6] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-800 transition">យល់ព្រម</button>
+                <button onclick="window.closeNoteModal()" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-300 transition">បោះបង់</button>
             </div>
         </div>
     </div>
@@ -375,19 +385,42 @@
                     <i data-lucide="users" class="w-5 h-5 text-blue-600"></i>
                     ជ្រើសរើសសិស្ស
                 </h3>
-                <button onclick="closeStudentModal()" class="p-1 hover:bg-gray-200 rounded-full"><i data-lucide="x" class="w-5 h-5 text-gray-500"></i></button>
+                <button onclick="window.closeStudentModal()" class="p-1 hover:bg-gray-200 rounded-full"><i data-lucide="x" class="w-5 h-5 text-gray-500"></i></button>
             </div>
             <div class="p-3 border-b border-gray-100">
                 <div class="relative">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                    <input type="text" id="studentSearch" onkeyup="filterStudents()" placeholder="ស្វែងរកឈ្មោះ ឬអត្តលេខ..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm">
+                    <input type="text" id="studentSearch" onkeyup="window.filterStudents()" placeholder="ស្វែងរកឈ្មោះ ឬអត្តលេខ..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm">
                 </div>
             </div>
             <div id="studentListContainer" class="overflow-y-auto p-2 flex-1 space-y-1 min-h-[200px]"></div>
         </div>
     </div>
 
-    <script>
+    <!-- FIREBASE INTEGRATION & SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your provided Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const PTEC_APP_ID = "ptec-app";
+        let currentUserId = null;
+
         lucide.createIcons();
         document.getElementById('noteModal').style.display = 'none';
         document.getElementById('studentModal').style.display = 'none';
@@ -396,15 +429,9 @@
         const khDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
         function toKhmerNum(num) { return num.toString().split('').map(d => khDigits[d] || d).join(''); }
 
-        let classList = JSON.parse(localStorage.getItem('app_classes')) || [{id: 'default', name: 'ថ្នាក់ដើម'}];
-        let currentClassId = localStorage.getItem('current_class_id') || 'default';
-
-        function getKey(baseKey) {
-            if (currentClassId === 'default') return baseKey; 
-            return baseKey + '_' + currentClassId;
-        }
-
         // --- Core Data ---
+        let classList = [{id: 'default', name: 'ថ្នាក់ដើម'}];
+        let currentClassId = 'default';
         let students = [];
         let classConfig = {};
         let attendanceHistory = {};
@@ -419,14 +446,63 @@
         let selectedSeatId = null;
         let seatingLayout = {}; 
 
-        // MAIN INITIALIZATION LOGIC
-        window.onload = () => {
-            initApp();
-            showSection('attendance'); 
-        };
+        // ================= FIREBASE AUTH & INIT =================
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                await migrateDataIfNeeded(); // Backup from local to Firebase if needed
+                await initApp();
+                document.getElementById('loading-overlay').style.display = 'none';
+            } else {
+                signInAnonymously(auth).catch(error => {
+                    console.error("Auth Error:", error);
+                    alert("មិនអាចភ្ជាប់ទៅកាន់ម៉ាស៊ីនមេបានទេ! សូមពិនិត្យអ៊ីនធឺណិតរបស់អ្នក។");
+                });
+            }
+        });
 
-        function initApp() {
-            loadClassData();
+        async function migrateDataIfNeeded() {
+            // Check if user already has metadata in Firebase
+            const metaDoc = await getDoc(doc(db, "users", currentUserId, "data", "metadata"));
+            if (!metaDoc.exists()) {
+                console.log("Migrating local data to Firebase...");
+                
+                // 1. Migrate Globals
+                const localStudents = JSON.parse(localStorage.getItem('students') || '[]');
+                const teacherProfile = JSON.parse(localStorage.getItem('teacherProfile') || '{}');
+                await setDoc(doc(db, "users", currentUserId, "data", "globals"), { 
+                    students: localStudents, 
+                    teacherProfile: teacherProfile 
+                });
+
+                // 2. Migrate Classes metadata
+                const localClasses = JSON.parse(localStorage.getItem('app_classes')) || [{id: 'default', name: 'ថ្នាក់ដើម'}];
+                const localCurrent = localStorage.getItem('current_class_id') || 'default';
+                await setDoc(doc(db, "users", currentUserId, "data", "metadata"), { 
+                    classes: localClasses, 
+                    currentClassId: localCurrent 
+                });
+
+                // 3. Migrate specific class data
+                for (const cls of localClasses) {
+                    const cid = cls.id;
+                    const histKey = cid === 'default' ? 'attendance_history' : 'attendance_history_' + cid;
+                    const lockKey = cid === 'default' ? 'locked_dates' : 'locked_dates_' + cid;
+                    const seatLayKey = cid === 'default' ? 'seatingLayout' : 'seatingLayout_' + cid;
+                    const seatConfKey = cid === 'default' ? 'seatingConfig' : 'seatingConfig_' + cid;
+
+                    await setDoc(doc(db, "users", currentUserId, "data", `class_${cid}`), {
+                        attendanceHistory: JSON.parse(localStorage.getItem(histKey) || '{}'),
+                        lockedDates: JSON.parse(localStorage.getItem(lockKey) || '[]'),
+                        seatingLayout: JSON.parse(localStorage.getItem(seatLayKey) || '{}'),
+                        seatingConfig: JSON.parse(localStorage.getItem(seatConfKey) || '{"totalTables": 20, "gridCols": 4, "seatsPerTable": 2, "layout": "grid"}')
+                    });
+                }
+            }
+        }
+
+        async function initApp() {
+            await loadClassData();
             renderClassSelector();
             
             const today = new Date().toISOString().split('T')[0];
@@ -440,26 +516,70 @@
             document.getElementById('semester_end').value = today.substring(0, 7);
             
             handleReportTypeChange();
-            updateGridConfig(); // Init Seating Plan View
+            updateGridConfigUI(); // Init Seating Plan View
             loadAttendance();
+            showSection('attendance'); 
         }
 
-        function loadClassData() {
-            const globalStudents = JSON.parse(localStorage.getItem('students') || '[]');
-            students = globalStudents.map(s => ({
-                uid: s.id ? String(s.id) : 'N/A',
-                name: s.name,
-                gender: s.gender,
-                dob: s.dob || '-',
-                parent: s.father || s.mother || '-',
-                phone: s.phone || '-',
-                photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
-            }));
-            localStorage.setItem(getKey('students_db'), JSON.stringify(students));
+        async function loadClassData() {
+            // Fetch metadata
+            const metaSnap = await getDoc(doc(db, "users", currentUserId, "data", "metadata"));
+            if (metaSnap.exists()) {
+                const data = metaSnap.data();
+                classList = data.classes || [{id: 'default', name: 'ថ្នាក់ដើម'}];
+                currentClassId = data.currentClassId || 'default';
+            }
 
-            // Load from profile.html's storage dynamically instead of custom setup section
-            const teacherProfile = JSON.parse(localStorage.getItem('teacherProfile')) || {};
+            // Fetch students from the new collection structure (same as student-listV2)
+            const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+            const studentsSnap = await getDocs(studentsRef);
+            const loadedStudents = [];
+            studentsSnap.forEach(docSnap => {
+                const s = docSnap.data();
+                loadedStudents.push({
+                    uid: s.id ? String(s.id) : 'N/A',
+                    name: s.name || 'គ្មានឈ្មោះ',
+                    gender: s.gender || '-',
+                    dob: s.dob || '-',
+                    parent: s.father || s.mother || '-',
+                    phone: s.phone || '-',
+                    photo: s.photo || `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`,
+                    createdAt: s.createdAt || 0
+                });
+            });
             
+            // Sort to match student-listV2 (by createdAt)
+            loadedStudents.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            students = loadedStudents;
+
+            // Fetch teacher profile from the saved location in profile.html
+            const profileRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'profile', 'data');
+            const profileSnap = await getDoc(profileRef);
+            let teacherProfile = {};
+            
+            if (profileSnap.exists()) {
+                teacherProfile = profileSnap.data();
+            } else {
+                // Fallback to older saved config if profile doesn't exist yet
+                const globalSnap = await getDoc(doc(db, "users", currentUserId, "data", "globals"));
+                if (globalSnap.exists()) {
+                    teacherProfile = globalSnap.data().teacherProfile || {};
+                    // Also fallback students if the new collection is empty
+                    if (students.length === 0) {
+                        const globalStudents = globalSnap.data().students || [];
+                        students = globalStudents.map(s => ({
+                            uid: s.id ? String(s.id) : 'N/A',
+                            name: s.name,
+                            gender: s.gender,
+                            dob: s.dob || '-',
+                            parent: s.father || s.mother || '-',
+                            phone: s.phone || '-',
+                            photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
+                        }));
+                    }
+                }
+            }
+
             classConfig = {
                 org1: teacherProfile.management_unit_1 || "មន្ទីរអប់រំ យុវជន និងកីឡា",
                 org2: teacherProfile.management_unit_2 || "ការិយាល័យអប់រំ យុវជន និងកីឡា",
@@ -472,67 +592,92 @@
 
             const cls = classList.find(c => c.id === currentClassId);
             if(cls) {
-                // If it's the default app class name, sync it with the profile
-                if (cls.name === 'ថ្នាក់ដើម' && teacherProfile.class_name) {
+                // Update default class name if specific profile is provided
+                if (cls.id === 'default' && teacherProfile.class_name) {
                     cls.name = teacherProfile.class_name;
-                    saveClassList();
+                    classConfig.className = teacherProfile.class_name;
+                } else {
+                    classConfig.className = cls.name;
                 }
-                // Ensure print reports uses the currently selected class name
-                classConfig.className = cls.name;
             }
 
-            attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
-            lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
+            // Fetch class specific data
+            const classSnap = await getDoc(doc(db, "users", currentUserId, "data", `class_${currentClassId}`));
+            if(classSnap.exists()) {
+                const data = classSnap.data();
+                attendanceHistory = data.attendanceHistory || {};
+                lockedDates = data.lockedDates || [];
+                seatingLayout = data.seatingLayout || {};
+                const conf = data.seatingConfig || { totalTables: 20, gridCols: 4, seatsPerTable: 2, layout: 'grid' };
+                TOTAL_TABLES = conf.totalTables;
+                GRID_COLS = conf.gridCols;
+                SEATS_PER_TABLE = conf.seatsPerTable;
+                CURRENT_LAYOUT = conf.layout;
+            } else {
+                attendanceHistory = {}; lockedDates = []; seatingLayout = {};
+                TOTAL_TABLES = 20; GRID_COLS = 4; SEATS_PER_TABLE = 2; CURRENT_LAYOUT = 'grid';
+            }
+        }
 
-            // Load Seating layout specific to this class
-            seatingLayout = JSON.parse(localStorage.getItem(getKey('seatingLayout'))) || {};
-            const seatConfig = JSON.parse(localStorage.getItem(getKey('seatingConfig'))) || {
-                totalTables: 20, gridCols: 4, seatsPerTable: 2, layout: 'grid'
-            };
-            document.getElementById('inputTables').value = seatConfig.totalTables;
-            document.getElementById('inputCols').value = seatConfig.gridCols;
-            if(seatConfig.seatsPerTable) document.getElementById('seatsPerTable').value = seatConfig.seatsPerTable;
-            if(seatConfig.layout) document.getElementById('layoutSelect').value = seatConfig.layout;
+        // --- Database Saving Helpers ---
+        async function saveClassMetaToFirebase() {
+            await setDoc(doc(db, "users", currentUserId, "data", "metadata"), { 
+                classes: classList, currentClassId: currentClassId 
+            }, {merge: true});
+        }
+
+        async function saveClassDataToFirebase() {
+            const conf = { totalTables: TOTAL_TABLES, gridCols: GRID_COLS, seatsPerTable: SEATS_PER_TABLE, layout: CURRENT_LAYOUT };
+            await setDoc(doc(db, "users", currentUserId, "data", `class_${currentClassId}`), {
+                attendanceHistory: attendanceHistory,
+                lockedDates: lockedDates,
+                seatingLayout: seatingLayout,
+                seatingConfig: conf
+            }, {merge: true});
         }
 
         // --- Class Management ---
-        function saveClassList() { localStorage.setItem('app_classes', JSON.stringify(classList)); }
-
         function renderClassSelector() {
             const select = document.getElementById('class_selector');
             select.innerHTML = classList.map(c => `<option value="${c.id}" ${c.id === currentClassId ? 'selected' : ''} class="text-gray-800">${c.name}</option>`).join('');
             document.querySelectorAll('.display_current_class').forEach(el => el.innerText = "(" + (classList.find(c => c.id === currentClassId)?.name || '') + ")");
         }
 
-        function changeClass(newId) {
+        async function changeClass(newId) {
+            document.getElementById('loading-overlay').style.display = 'flex';
             currentClassId = newId;
-            localStorage.setItem('current_class_id', currentClassId);
-            initApp();
+            await saveClassMetaToFirebase();
+            await initApp();
+            document.getElementById('loading-overlay').style.display = 'none';
         }
 
-        function createNewClass() {
+        async function createNewClass() {
             const name = prompt("បញ្ចូលឈ្មោះថ្នាក់ថ្មី (ឧ. ១២ ខ):");
             if (name) {
+                document.getElementById('loading-overlay').style.display = 'flex';
                 const newId = 'class_' + Date.now();
                 classList.push({id: newId, name: name});
-                saveClassList();
                 currentClassId = newId;
-                localStorage.setItem('current_class_id', currentClassId);
+                
+                await saveClassMetaToFirebase();
+                // Initialize empty data for new class
+                await saveClassDataToFirebase(); 
                 
                 classConfig.className = name;
-                initApp();
+                await initApp();
+                document.getElementById('loading-overlay').style.display = 'none';
             }
         }
 
-        function editClassName() {
+        async function editClassName() {
             const clsIdx = classList.findIndex(c => c.id === currentClassId);
             if(clsIdx !== -1) {
                 const newName = prompt("កែឈ្មោះថ្នាក់នេះ៖", classList[clsIdx].name);
                 if(newName) {
                     classList[clsIdx].name = newName;
-                    saveClassList();
+                    await saveClassMetaToFirebase();
                     classConfig.className = newName;
-                    initApp();
+                    await initApp();
                 }
             }
         }
@@ -545,10 +690,7 @@
             if(id === 'reports') updateReport();
             if(id === 'attendance') loadAttendance();
             if(id === 'dashboard') renderDashboard();
-            if(id === 'seating') {
-                updateGridConfig(); 
-                loadAttendance();
-            }
+            if(id === 'seating') { updateGridConfigUI(); loadAttendance(); }
         }
 
         function syncDate(val) {
@@ -571,9 +713,8 @@
 
             const isLocked = lockedDates.includes(date);
 
-            // Update UI Restrictions
             const msgSunday = '<span class="text-red-500 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 flex items-center gap-1"><i data-lucide="calendar-off" class="w-4 h-4"></i>ថ្ងៃអាទិត្យ ឈប់សម្រាក</span>';
-            const msgLocked = '<button onclick="unlockAttendance()" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg flex items-center gap-1 text-xs font-bold border border-red-200 transition" title="ដោះសោ"><i data-lucide="lock" class="w-4 h-4"></i></button>';
+            const msgLocked = '<button onclick="window.unlockAttendance()" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg flex items-center gap-1 text-xs font-bold border border-red-200 transition" title="ដោះសោ"><i data-lucide="lock" class="w-4 h-4"></i></button>';
             
             const lock1 = document.getElementById('lock_status_container');
             const lock2 = document.getElementById('lock_status_container_seating');
@@ -591,7 +732,7 @@
                     btn.className = "mt-8 bg-gray-400 text-white px-8 py-4 rounded-xl w-full font-bold shadow flex items-center justify-center gap-2 text-lg cursor-not-allowed";
                     btn.disabled = true;
                 } else {
-                    btn.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ';
+                    btn.innerHTML = '<i data-lucide="cloud-upload" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះទៅកាន់អនឡាញ';
                     btn.className = "mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg";
                     btn.disabled = false;
                 }
@@ -599,9 +740,8 @@
             updateSaveBtn(document.getElementById('btn_save_attendance'));
             updateSaveBtn(document.getElementById('btn_save_attendance_seating'));
 
-            // Render List View
             if (students.length === 0) { 
-                grid.innerHTML = '<div class="col-span-full text-center p-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300"><p class="text-gray-500 font-bold text-lg mb-2">មិនទាន់មានទិន្នន័យសិស្សទេ</p><p class="text-sm text-gray-400 mb-6">សូមទៅបញ្ចូលព័ត៌មានសិស្សជាមុនសិន។</p></div>'; 
+                grid.innerHTML = '<div class="col-span-full text-center p-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300"><p class="text-gray-500 font-bold text-lg mb-2">មិនទាន់មានទិន្នន័យសិស្សទេ</p><p class="text-sm text-gray-400 mb-6">សូមទៅបញ្ចូលព័ត៌មានសិស្សនៅផ្ទាំងបញ្ជីសិស្សជាមុនសិន។</p></div>'; 
             } else {
                 grid.innerHTML = students.map(s => {
                     const att = records[s.uid] || { status: '', note: '' };
@@ -618,26 +758,20 @@
                             <p class="font-bold text-[#0054a6] truncate w-32 md:w-40">${s.name}</p>
                             <p class="text-xs text-gray-400 font-mono mb-2">ID: ${s.uid}</p>
                             <div class="flex gap-2">
-                                <button onclick="mark('${s.uid}', 'P')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('P', 'bg-green-600 ring-green-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>មក</button>
-                                <button onclick="mark('${s.uid}', 'L')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('L', 'bg-yellow-500 ring-yellow-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>ច្បាប់</button>
-                                <button onclick="mark('${s.uid}', 'A')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('A', 'bg-red-600 ring-red-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>អវត្ត</button>
+                                <button onclick="window.mark('${s.uid}', 'P')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('P', 'bg-green-600 ring-green-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>មក</button>
+                                <button onclick="window.mark('${s.uid}', 'L')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('L', 'bg-yellow-500 ring-yellow-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>ច្បាប់</button>
+                                <button onclick="window.mark('${s.uid}', 'A')" class="flex-1 py-1.5 text-xs rounded-lg font-bold transition ${getBtnClass('A', 'bg-red-600 ring-red-300')}" ${(isLocked || isSunday) ? 'disabled' : ''}>អវត្ត</button>
                             </div>
                         </div>
                     </div>`;
                 }).join('');
             }
-            
-            // Sync Map View Render
-            renderGrid();
-            lucide.createIcons();
+            renderGrid(); lucide.createIcons();
         }
 
         function mark(uid, status) {
             const date = document.getElementById('attendance_date').value;
-            if (date) {
-                const [y, m, d] = date.split('-');
-                if (new Date(y, m - 1, d).getDay() === 0) return; 
-            }
+            if (date) { const [y, m, d] = date.split('-'); if (new Date(y, m - 1, d).getDay() === 0) return; }
             if (lockedDates.includes(date)) return;
 
             const student = students.find(s => String(s.uid) === String(uid));
@@ -659,67 +793,72 @@
 
         function closeNoteModal() { document.getElementById('noteModal').style.display = 'none'; }
         
-        function saveStatus(uid, status, note) {
+        async function saveStatus(uid, status, note) {
             const date = document.getElementById('attendance_date').value;
             if(!attendanceHistory[date]) attendanceHistory[date] = {};
             attendanceHistory[date][uid] = { status: status, note: note };
             
-            localStorage.setItem(getKey('attendance_history'), JSON.stringify(attendanceHistory));
-            loadAttendance(); // This will re-render both List and Map grids ensuring sync
+            // Just update local memory and view, we save to DB on "Save" button for optimization
+            // However, to ensure no data loss, let's sync to Firebase in background
+            saveClassDataToFirebase();
+            loadAttendance();
         }
 
-        function saveAttendance() { 
+        async function saveAttendance() { 
             if(students.length === 0) return alert('មិនមានសិស្សសម្រាប់រក្សាទុកទេ!');
-            
             const date = document.getElementById('attendance_date').value;
-            if (date) {
-                const [y, m, d] = date.split('-');
-                if (new Date(y, m - 1, d).getDay() === 0) return alert('មិនអាចកត់ត្រាវត្តមាននៅថ្ងៃអាទិត្យបានទេ!');
-            }
+            if (date) { const [y, m, d] = date.split('-'); if (new Date(y, m - 1, d).getDay() === 0) return alert('មិនអាចកត់ត្រាវត្តមាននៅថ្ងៃអាទិត្យបានទេ!'); }
             if (lockedDates.includes(date)) return;
 
-            if (!confirm('តើអ្នកពិតជាចង់រក្សាទុកវត្តមានថ្ងៃនេះមែនទេ? បន្ទាប់ពីររក្សាទុករួច ទិន្នន័យនឹងត្រូវបានចាក់សោ (មិនអាចកែប្រែបាន)។')) return;
+            if (!confirm('តើអ្នកពិតជាចង់រក្សាទុកវត្តមានថ្ងៃនេះទៅកាន់ Database មែនទេ? បន្ទាប់ពីររក្សាទុករួច ទិន្នន័យនឹងត្រូវបានចាក់សោ។')) return;
 
+            const originalBtnText = document.getElementById('btn_save_attendance').innerHTML;
+            document.getElementById('btn_save_attendance').innerHTML = '<div class="spinner w-5 h-5 border-2 border-white/50 border-l-white"></div> កំពុងរក្សាទុក...';
+            
             if(!attendanceHistory[date]) attendanceHistory[date] = {};
             students.forEach(s => {
-                if (!attendanceHistory[date][s.uid]) {
-                    attendanceHistory[date][s.uid] = { status: 'P', note: '' }; // Auto 'P' for unmarked
-                }
+                if (!attendanceHistory[date][s.uid]) attendanceHistory[date][s.uid] = { status: 'P', note: '' };
             });
-            localStorage.setItem(getKey('attendance_history'), JSON.stringify(attendanceHistory)); 
-            
             lockedDates.push(date);
-            localStorage.setItem(getKey('locked_dates'), JSON.stringify(lockedDates));
+            
+            await saveClassDataToFirebase();
 
             loadAttendance();
             
             const toast = document.createElement('div');
             toast.className = "fixed top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white px-8 py-4 rounded-2xl shadow-2xl z-[3000] kh-moul flex items-center gap-3 animate-bounce";
-            toast.innerHTML = '<i data-lucide="check-circle" class="w-6 h-6"></i> បានរក្សាទុក និងចាក់សោដោយជោគជ័យ!';
+            toast.innerHTML = '<i data-lucide="check-circle" class="w-6 h-6"></i> បានរក្សាទុកទៅ Cloud ដោយជោគជ័យ!';
             document.body.appendChild(toast);
             lucide.createIcons();
             setTimeout(() => toast.remove(), 2500);
         }
 
-        function unlockAttendance() {
+        async function unlockAttendance() {
             const date = document.getElementById('attendance_date').value;
             if(confirm('តើអ្នកពិតជាចង់ដោះសោទិន្នន័យថ្ងៃនេះ ដើម្បីអាចកែប្រែឡើងវិញមែនទេ?')) {
                 lockedDates = lockedDates.filter(d => d !== date);
-                localStorage.setItem(getKey('locked_dates'), JSON.stringify(lockedDates));
+                await saveClassDataToFirebase();
                 loadAttendance();
             }
         }
 
-        // ================= SEATING PLAN LOGIC (Upgraded) =================
-        function updateGridConfig() {
+        // ================= SEATING PLAN LOGIC =================
+        function updateGridConfigUI() {
+            document.getElementById('inputTables').value = TOTAL_TABLES;
+            document.getElementById('inputCols').value = GRID_COLS;
+            document.getElementById('layoutSelect').value = CURRENT_LAYOUT;
+            if(SEATS_PER_TABLE) document.getElementById('seatsPerTable').value = SEATS_PER_TABLE;
+            renderGrid();
+        }
+
+        async function updateGridConfig() {
             TOTAL_TABLES = parseInt(document.getElementById('inputTables').value) || 0;
             GRID_COLS = parseInt(document.getElementById('inputCols').value) || 1;
             CURRENT_LAYOUT = document.getElementById('layoutSelect').value;
             
             const seatsPerTableDropdown = document.getElementById('seatsPerTable');
             if (CURRENT_LAYOUT.startsWith('group-')) {
-                const groupSize = parseInt(CURRENT_LAYOUT.split('-')[1]);
-                SEATS_PER_TABLE = groupSize;
+                SEATS_PER_TABLE = parseInt(CURRENT_LAYOUT.split('-')[1]);
                 seatsPerTableDropdown.disabled = true;
                 seatsPerTableDropdown.classList.add('opacity-50', 'cursor-not-allowed');
             } else {
@@ -728,41 +867,31 @@
                 seatsPerTableDropdown.classList.remove('opacity-50', 'cursor-not-allowed');
             }
 
-            // Cleanup orphaned seats if structure shrunk
             for (const seatId in seatingLayout) {
                 const parts = seatId.match(/t(\d+)-s(\d+)/);
                 if (parts) {
-                    const tNum = parseInt(parts[1]);
-                    const sNum = parseInt(parts[2]);
-                    if (tNum > TOTAL_TABLES || sNum > SEATS_PER_TABLE) {
-                        delete seatingLayout[seatId]; 
-                    }
+                    const tNum = parseInt(parts[1]); const sNum = parseInt(parts[2]);
+                    if (tNum > TOTAL_TABLES || sNum > SEATS_PER_TABLE) delete seatingLayout[seatId]; 
                 }
             }
 
             const grid = document.getElementById('tablesGrid');
-            if(!grid) return;
-            grid.style.gridTemplateColumns = '';
-
-            if (CURRENT_LAYOUT.startsWith('group-')) {
-                grid.className = 'grid gap-y-12 gap-x-8 mt-12 w-max mx-auto pb-16 min-w-[600px]';
-                grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, 300px)`;
-            } else if (CURRENT_LAYOUT === 'u-shape') {
-                grid.className = 'grid gap-6 min-w-[600px] w-full';
-                if (GRID_COLS < 3) GRID_COLS = 3; 
-                grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, minmax(0, 1fr))`;
-            } else {
-                grid.className = 'grid gap-6 min-w-[600px] w-full';
-                grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, minmax(0, 1fr))`;
+            if(grid) {
+                grid.style.gridTemplateColumns = '';
+                if (CURRENT_LAYOUT.startsWith('group-')) {
+                    grid.className = 'grid gap-y-12 gap-x-8 mt-12 w-max mx-auto pb-16 min-w-[600px]';
+                    grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, 300px)`;
+                } else if (CURRENT_LAYOUT === 'u-shape') {
+                    grid.className = 'grid gap-6 min-w-[600px] w-full';
+                    if (GRID_COLS < 3) GRID_COLS = 3; 
+                    grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, minmax(0, 1fr))`;
+                } else {
+                    grid.className = 'grid gap-6 min-w-[600px] w-full';
+                    grid.style.gridTemplateColumns = `repeat(${GRID_COLS}, minmax(0, 1fr))`;
+                }
             }
-            
             renderGrid();
-            saveSeatingConfig();
-        }
-
-        function saveSeatingConfig() {
-            const config = { totalTables: TOTAL_TABLES, gridCols: GRID_COLS, seatsPerTable: SEATS_PER_TABLE, layout: CURRENT_LAYOUT };
-            localStorage.setItem(getKey('seatingConfig'), JSON.stringify(config));
+            await saveClassDataToFirebase();
         }
 
         function renderGrid() {
@@ -788,32 +917,22 @@
                     grid.insertAdjacentHTML('beforeend', bottomHtml);
                 }
             } else {
-                for (let i = 1; i <= TOTAL_TABLES; i++) {
-                    grid.insertAdjacentHTML('beforeend', createTableHTML(i));
-                }
+                for (let i = 1; i <= TOTAL_TABLES; i++) grid.insertAdjacentHTML('beforeend', createTableHTML(i));
             }
             lucide.createIcons();
         }
 
         function createTableHTML(i) {
-            if (CURRENT_LAYOUT.startsWith('group-')) {
-                return createCircularGroupHTML(i);
-            }
-
+            if (CURRENT_LAYOUT.startsWith('group-')) return createCircularGroupHTML(i);
             let seatsHtml = '';
             for(let s = 1; s <= SEATS_PER_TABLE; s++) seatsHtml += renderSeat(i, s, false);
-            return `
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3 flex-1 min-w-[150px]">
+            return `<div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3 flex-1 min-w-[150px]">
                     <div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider">តុទី ${i}</div>
-                    <div class="flex gap-3 h-24">${seatsHtml}</div>
-                </div>
-            `;
+                    <div class="flex gap-3 h-24">${seatsHtml}</div></div>`;
         }
 
         function createCircularGroupHTML(tableNum) {
-            let seatsHtml = '';
-            const radius = 105; 
-            
+            let seatsHtml = ''; const radius = 105; 
             let startAngleOffset = -90; 
             if (SEATS_PER_TABLE === 6) startAngleOffset = 0; 
             else if (SEATS_PER_TABLE === 8) startAngleOffset = -90; 
@@ -821,161 +940,93 @@
             for(let s = 1; s <= SEATS_PER_TABLE; s++) {
                 const angleDeg = (360 / SEATS_PER_TABLE) * (s - 1) + startAngleOffset;
                 const angleRad = angleDeg * (Math.PI / 180);
-                
-                const x = Math.cos(angleRad) * radius;
-                const y = Math.sin(angleRad) * radius;
-                
-                seatsHtml += `
-                    <div class="absolute hover:z-50 transition-all duration-200" style="top: calc(50% + ${y}px); left: calc(50% + ${x}px); transform: translate(-50%, -50%); width: 75px; height: 50px; z-index: 20;">
-                        ${renderSeat(tableNum, s, true)}
-                    </div>
-                `;
+                const x = Math.cos(angleRad) * radius, y = Math.sin(angleRad) * radius;
+                seatsHtml += `<div class="absolute hover:z-50 transition-all duration-200" style="top: calc(50% + ${y}px); left: calc(50% + ${x}px); transform: translate(-50%, -50%); width: 75px; height: 50px; z-index: 20;">${renderSeat(tableNum, s, true)}</div>`;
             }
-
-            return `
-                <div class="relative w-[300px] h-[300px] shrink-0 flex items-center justify-center">
-                    <div class="w-[84px] h-[84px] rounded-full border-2 border-gray-400 bg-gray-50 flex items-center justify-center z-10 shadow-sm relative">
-                        <span class="font-bold text-gray-600 text-sm">តុទី ${tableNum}</span>
-                    </div>
-                    ${seatsHtml}
-                </div>
-            `;
+            return `<div class="relative w-[300px] h-[300px] shrink-0 flex items-center justify-center">
+                    <div class="w-[84px] h-[84px] rounded-full border-2 border-gray-400 bg-gray-50 flex items-center justify-center z-10 shadow-sm relative"><span class="font-bold text-gray-600 text-sm">តុទី ${tableNum}</span></div>
+                    ${seatsHtml}</div>`;
         }
 
         function renderSeat(tableNum, seatNum, isCircular = false) {
             const seatId = `t${tableNum}-s${seatNum}`;
             const studentId = seatingLayout[seatId];
             const student = students.find(s => String(s.uid) === String(studentId));
-            
             const extraClasses = isCircular ? 'w-full h-full shadow-sm' : 'flex-1';
 
             if (student) {
                 const date = document.getElementById('attendance_date').value;
-                const status = attendanceHistory[date]?.[student.uid]?.status || 'P'; // Default visual 'P'
+                const status = attendanceHistory[date]?.[student.uid]?.status || 'P'; 
                 const statusClass = `status-${status}`;
-                
-                return `
-                    <div id="${seatId}" onclick="handleSeatClick('${seatId}')" 
-                        class="seat filled ${extraClasses} rounded-xl p-1 flex flex-col items-center justify-center text-center gap-0.5 relative overflow-hidden ${statusClass}">
-                        <div class="remove-btn" onclick="event.stopPropagation(); removeStudentFromSeat('${seatId}')">
-                            <i data-lucide="x" class="w-3 h-3"></i>
-                        </div>
+                return `<div id="${seatId}" onclick="window.handleSeatClick('${seatId}')" class="seat filled ${extraClasses} rounded-xl p-1 flex flex-col items-center justify-center text-center gap-0.5 relative overflow-hidden ${statusClass}">
+                        <div class="remove-btn" onclick="event.stopPropagation(); window.removeStudentFromSeat('${seatId}')"><i data-lucide="x" class="w-3 h-3"></i></div>
                         <div class="font-bold text-[11px] leading-tight line-clamp-2" title="${student.name}">${student.name}</div>
-                        <div class="text-[9px] opacity-80">${student.uid || ''}</div>
-                    </div>
-                `;
+                        <div class="text-[9px] opacity-80">${student.uid || ''}</div></div>`;
             } else {
-                return `
-                    <div id="${seatId}" onclick="handleSeatClick('${seatId}')" 
-                        class="seat empty ${extraClasses} rounded-xl flex items-center justify-center text-xs font-bold bg-white">
-                        <span>+</span>
-                    </div>
-                `;
+                return `<div id="${seatId}" onclick="window.handleSeatClick('${seatId}')" class="seat empty ${extraClasses} rounded-xl flex items-center justify-center text-xs font-bold bg-white"><span>+</span></div>`;
             }
         }
 
-        function toggleSeatingMode() {
+        async function toggleSeatingMode() {
             isSeatingEditMode = !isSeatingEditMode;
             const toggleBtn = document.getElementById('toggleModeBtn');
             const editTools = document.getElementById('editTools');
             const seatingSection = document.getElementById('seating-section');
 
             if (isSeatingEditMode) {
-                seatingSection.classList.add('mode-edit');
-                toggleBtn.classList.add('hidden');
-                editTools.classList.remove('hidden');
+                seatingSection.classList.add('mode-edit'); toggleBtn.classList.add('hidden'); editTools.classList.remove('hidden');
             } else {
-                seatingSection.classList.remove('mode-edit');
-                toggleBtn.classList.remove('hidden');
-                editTools.classList.add('hidden');
-                localStorage.setItem(getKey('seatingLayout'), JSON.stringify(seatingLayout));
-                saveSeatingConfig();
+                seatingSection.classList.remove('mode-edit'); toggleBtn.classList.remove('hidden'); editTools.classList.add('hidden');
+                await saveClassDataToFirebase();
             }
             lucide.createIcons();
         }
 
         function handleSeatClick(seatId) {
             const studentId = seatingLayout[seatId];
-            
             if (!studentId) {
                 if (isSeatingEditMode) openStudentModal(seatId);
             } else {
                 if (!isSeatingEditMode) {
                     const date = document.getElementById('attendance_date').value;
                     if(lockedDates.includes(date)) return;
-                    if (date) {
-                        const [y, m, d] = date.split('-');
-                        if (new Date(y, m - 1, d).getDay() === 0) return; 
-                    }
-                    toggleSeatAttendanceStatus(studentId);
+                    if (date) { const [y, m, d] = date.split('-'); if (new Date(y, m - 1, d).getDay() === 0) return; }
+                    
+                    let current = attendanceHistory[date]?.[studentId]?.status || 'P';
+                    const flow = { 'P': 'L', 'L': 'A', 'A': 'P' };
+                    mark(studentId, flow[current]); 
                 }
             }
         }
 
-        function toggleSeatAttendanceStatus(studentId) {
-            const date = document.getElementById('attendance_date').value;
-            let current = attendanceHistory[date]?.[studentId]?.status || 'P';
-            const flow = { 'P': 'L', 'L': 'A', 'A': 'P' };
-            const nextStatus = flow[current];
-            
-            // This syncs to the main history and handles notes
-            mark(studentId, nextStatus); 
-        }
-
         function openStudentModal(seatId) {
             selectedSeatId = seatId;
-            const modal = document.getElementById('studentModal');
             const seatedIds = Object.values(seatingLayout).map(id => String(id));
             const availableStudents = students.filter(s => !seatedIds.includes(String(s.uid)));
             renderStudentList(availableStudents);
-            modal.style.display = 'flex';
+            document.getElementById('studentModal').style.display = 'flex';
             document.getElementById('studentSearch').value = '';
             document.getElementById('studentSearch').focus();
         }
 
-        function closeStudentModal() {
-            document.getElementById('studentModal').style.display = 'none';
-            selectedSeatId = null;
-        }
+        function closeStudentModal() { document.getElementById('studentModal').style.display = 'none'; selectedSeatId = null; }
 
         function renderStudentList(listData) {
             const container = document.getElementById('studentListContainer');
             container.innerHTML = '';
-            
             if (students.length === 0) {
-                container.innerHTML = `
-                    <div class="p-6 text-center flex flex-col items-center gap-3">
-                        <i data-lucide="user-x" class="w-10 h-10 text-gray-300"></i>
-                        <div class="text-gray-500 text-sm">មិនទាន់មានទិន្នន័យសិស្សទេ!</div>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
+                container.innerHTML = `<div class="p-6 text-center flex flex-col items-center gap-3"><i data-lucide="user-x" class="w-10 h-10 text-gray-300"></i><div class="text-gray-500 text-sm">មិនទាន់មានទិន្នន័យសិស្សទេ!</div></div>`;
+                lucide.createIcons(); return;
             }
-
             if (listData.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">សិស្សទាំងអស់ត្រូវបានចាត់ចូលតុរួចរាល់</div>';
-                return;
+                container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">សិស្សទាំងអស់ត្រូវបានចាត់ចូលតុរួចរាល់</div>'; return;
             }
-            
             listData.forEach(s => {
                 const el = document.createElement('div');
                 el.className = 'p-3 hover:bg-blue-50 cursor-pointer rounded-xl flex items-center gap-3 border border-transparent hover:border-blue-100 transition';
                 el.onclick = () => assignStudent(s.uid);
-                
-                const stName = s.name || 'គ្មានឈ្មោះ';
-                const stId = s.uid || 'គ្មានអត្តលេខ';
-                const stGender = s.gender === 'ស្រី' ? 'ស' : 'ប';
-                
-                el.innerHTML = `
-                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                        ${stGender}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold text-gray-700 text-sm truncate">${stName}</div>
-                        <div class="text-xs text-gray-400">ID: ${stId}</div>
-                    </div>
-                `;
+                el.innerHTML = `<div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">${s.gender === 'ស្រី' ? 'ស' : 'ប'}</div>
+                                <div class="flex-1 min-w-0"><div class="font-bold text-gray-700 text-sm truncate">${s.name || 'គ្មានឈ្មោះ'}</div><div class="text-xs text-gray-400">ID: ${s.uid || 'គ្មានអត្តលេខ'}</div></div>`;
                 container.appendChild(el);
             });
         }
@@ -983,27 +1034,23 @@
         function filterStudents() {
             const query = document.getElementById('studentSearch').value.toLowerCase();
             const seatedIds = Object.values(seatingLayout).map(id => String(id));
-            const filtered = students.filter(s => 
-                !seatedIds.includes(String(s.uid)) && 
-                (s.name.toLowerCase().includes(query) || String(s.uid).toLowerCase().includes(query))
-            );
+            const filtered = students.filter(s => !seatedIds.includes(String(s.uid)) && (s.name.toLowerCase().includes(query) || String(s.uid).toLowerCase().includes(query)));
             renderStudentList(filtered);
         }
 
-        function assignStudent(studentId) {
+        async function assignStudent(studentId) {
             if (selectedSeatId) {
                 seatingLayout[selectedSeatId] = String(studentId);
-                localStorage.setItem(getKey('seatingLayout'), JSON.stringify(seatingLayout));
-                renderGrid();
-                closeStudentModal();
+                renderGrid(); closeStudentModal();
+                await saveClassDataToFirebase();
             }
         }
 
-        function removeStudentFromSeat(seatId) {
+        async function removeStudentFromSeat(seatId) {
             if (!isSeatingEditMode) return;
             delete seatingLayout[seatId];
-            localStorage.setItem(getKey('seatingLayout'), JSON.stringify(seatingLayout));
             renderGrid();
+            await saveClassDataToFirebase();
         }
 
         // ================= DASHBOARD & REPORTS =================
@@ -1049,7 +1096,6 @@
             const currentYear = new Date().getFullYear();
             
             divRange.style.display = 'none'; divSingle.style.display = 'none'; divDaily.style.display = 'none';
-            
             if (type === 'daily') divDaily.style.display = 'block';
             else if (type === 'monthly') divSingle.style.display = 'block';
             else if (type === 'semester1') { divRange.style.display = 'grid'; document.getElementById('semester_start').value = (currentYear - 1) + "-10"; document.getElementById('semester_end').value = currentYear + "-03"; }
@@ -1086,13 +1132,10 @@
                 title = type === 'semester1' ? "របាយការណ៍វត្តមានសិស្ស ឆមាសទី ១" : (type === 'semester2' ? "របាយការណ៍វត្តមានសិស្ស ឆមាសទី ២" : "របាយការណ៍វត្តមានសិស្ស");
                 subDate = dStart.getFullYear() !== dEnd.getFullYear() ? `ចាប់ពីខែ ${khMonths[dStart.getMonth()]} ឆ្នាំ${toKhmerNum(dStart.getFullYear())} ដល់ខែ ${khMonths[dEnd.getMonth()]} ឆ្នាំ${toKhmerNum(dEnd.getFullYear())}` : `ចាប់ពីខែ ${khMonths[dStart.getMonth()]} ដល់ខែ ${khMonths[dEnd.getMonth()]} ឆ្នាំ${toKhmerNum(dEnd.getFullYear())}`;
             }
-            document.getElementById('report_title_display').innerText = title;
-            dateText.innerText = subDate;
+            document.getElementById('report_title_display').innerText = title; dateText.innerText = subDate;
             
             const today = new Date();
-            if (typeof momentkh !== 'undefined') {
-                try { document.getElementById('print_lunar_date').innerText = momentkh.format(momentkh.fromDate(today)).replace('ពុទ្ធសករាជ', 'ព.ស.'); } catch (e) { document.getElementById('print_lunar_date').innerText = ""; }
-            }
+            if (typeof momentkh !== 'undefined') { try { document.getElementById('print_lunar_date').innerText = momentkh.format(momentkh.fromDate(today)).replace('ពុទ្ធសករាជ', 'ព.ស.'); } catch (e) { document.getElementById('print_lunar_date').innerText = ""; } }
             document.getElementById('print_solar_date').innerText = `${classConfig.location}, ថ្ងៃទី${toKhmerNum(today.getDate())} ខែ${khMonths[today.getMonth()]} ឆ្នាំ${toKhmerNum(today.getFullYear())}`;
 
             let filterDates = Object.keys(attendanceHistory).filter(d => {
@@ -1112,15 +1155,7 @@
                     }
                 });
                 const display = (v) => type === 'daily' ? (v > 0 ? '✓' : '') : (v > 0 ? toKhmerNum(v) : '');
-                return `<tr class="border-b border-black">
-                    <td class="border-r border-black p-1 text-center font-mono">${idx+1}</td>
-                    <td class="border-r border-black p-1 text-center font-mono">${s.uid}</td>
-                    <td class="border-r border-black p-1 font-bold pl-2">${s.name}</td>
-                    <td class="border-r border-black p-1 text-center font-bold">${display(p)}</td>
-                    <td class="border-r border-black p-1 text-center font-bold">${display(l)}</td>
-                    <td class="border-r border-black p-1 text-center font-bold">${display(a)}</td>
-                    <td class="p-1 text-[8pt] italic text-gray-600">${notes.slice(0, 2).join(', ')}</td>
-                </tr>`;
+                return `<tr class="border-b border-black"><td class="border-r border-black p-1 text-center font-mono">${idx+1}</td><td class="border-r border-black p-1 text-center font-mono">${s.uid}</td><td class="border-r border-black p-1 font-bold pl-2">${s.name}</td><td class="border-r border-black p-1 text-center font-bold">${display(p)}</td><td class="border-r border-black p-1 text-center font-bold">${display(l)}</td><td class="border-r border-black p-1 text-center font-bold">${display(a)}</td><td class="p-1 text-[8pt] italic text-gray-600">${notes.slice(0, 2).join(', ')}</td></tr>`;
             }).join('');
         }
 
@@ -1130,6 +1165,7 @@
         }
 
         function exportToExcel() {
+            // ... (Excel export logic remains exactly the same) ...
             const type = document.getElementById('report_type').value;
             const singleM = document.getElementById('single_month_input').value;
             const dailyDate = document.getElementById('report_daily_date').value;
@@ -1204,6 +1240,18 @@
             localStorage.setItem('temp_report_data', JSON.stringify(reportData));
             window.open('monthly-report.html', '_blank');
         }
+
+        // Export functions to Window so HTML inline-events (onclick, onchange) can access them
+        window.changeClass = changeClass; window.createNewClass = createNewClass; window.editClassName = editClassName;
+        window.showSection = showSection; window.syncDate = syncDate; window.mark = mark;
+        window.confirmMarkWithNote = confirmMarkWithNote; window.closeNoteModal = closeNoteModal;
+        window.saveAttendance = saveAttendance; window.unlockAttendance = unlockAttendance;
+        window.toggleSeatingMode = toggleSeatingMode; window.updateGridConfig = updateGridConfig;
+        window.handleSeatClick = handleSeatClick; window.removeStudentFromSeat = removeStudentFromSeat;
+        window.openStudentModal = openStudentModal; window.closeStudentModal = closeStudentModal;
+        window.filterStudents = filterStudents; window.renderDashboard = renderDashboard;
+        window.handleReportTypeChange = handleReportTypeChange; window.updateReport = updateReport;
+        window.generatePDF = generatePDF; window.exportToExcel = exportToExcel; window.generateMonthlyDetailReport = generateMonthlyDetailReport;
     </script>
 </body>
 </html>
