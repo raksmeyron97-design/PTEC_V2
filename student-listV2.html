@@ -19,6 +19,9 @@
         }
         .kh-moul { font-family: 'Moul', cursive; font-weight: normal; }
         
+        /* Loading Overlay */
+        #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+
         /* Table Styles */
         .data-table {
             width: 100%;
@@ -108,6 +111,13 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay for Firebase fetching -->
+    <div id="loadingOverlay">
+        <div class="w-16 h-16 border-4 border-[#322a83] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="kh-moul text-[#322a83] text-lg animate-pulse" id="loading-text">កំពុងទាញយកទិន្នន័យ...</p>
+        <p class="text-xs text-slate-500 mt-2">សូមរង់ចាំបន្តិច</p>
+    </div>
+
     <!-- Navigation Bar -->
     <nav class="bg-indigo-900 text-white p-4 shadow-lg sticky top-0 z-50 no-print">
         <div class="container mx-auto flex items-center justify-between">
@@ -117,7 +127,7 @@
             </div>
             <div class="text-sm font-bold flex items-center gap-4">
                 <a href="attendance-1.html" class="hover:text-indigo-200 transition-colors flex items-center gap-1"><i data-lucide="calendar-check" class="w-4 h-4"></i> វត្តមាន</a>
-                <a href="enrollment.html" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded flex items-center gap-1 transition-colors"><i data-lucide="user-plus" class="w-4 h-4"></i> បញ្ចូលសិស្សថ្មី</a>
+                <a href="enrollment_V2.html" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded flex items-center gap-1 transition-colors"><i data-lucide="user-plus" class="w-4 h-4"></i> បញ្ចូលសិស្សថ្មី</a>
             </div>
         </div>
     </nav>
@@ -144,7 +154,7 @@
                         </button>
                         
                         <!-- Delete All Button -->
-                        <button onclick="deleteAllStudents()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors ml-auto md:ml-4">
+                        <button id="deleteAllBtn" onclick="window.deleteAllStudents()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors ml-auto md:ml-4">
                             <i data-lucide="trash-2" class="w-4 h-4"></i> លុបទាំងអស់
                         </button>
                     </div>
@@ -181,7 +191,7 @@
                 <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-gray-400">
                     <i data-lucide="users" class="w-16 h-16 mb-4 opacity-50"></i>
                     <p class="text-lg font-bold">មិនទាន់មានទិន្នន័យសិស្សនៅឡើយទេ</p>
-                    <a href="enrollment.html" class="mt-4 bg-[#2da143] text-white px-6 py-2 rounded font-bold hover:bg-[#238535] transition-colors">ទៅកាន់ទំព័របញ្ចូលសិស្ស</a>
+                    <a href="enrollment_V2.html" class="mt-4 bg-[#2da143] text-white px-6 py-2 rounded font-bold hover:bg-[#238535] transition-colors">ទៅកាន់ទំព័របញ្ចូលសិស្ស</a>
                 </div>
 
             </div>
@@ -196,13 +206,101 @@
         </div>
     </div>
 
-    <script>
-        // Initialize Lucide Icons
+    <!-- ប្រើប្រាស់ Type Module សម្រាប់ Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, deleteDoc, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const PTEC_APP_ID = "ptec-app";
+        let currentUser = null;
+        let studentsData = [];
+        let unsubscribeSnapshot = null;
+
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loading-text');
+
+        // =======================
+        // Authentication Check
+        // =======================
+        const initAuth = async () => {
+            try {
+                // To support Canvas Environment Auth Flow gracefully
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else if (!auth.currentUser) {
+                    // បើមិនមាន user login អាច redirect ទៅកាន់ index.html ឬប្រើ Anonymous Login ជាបណ្ដោះអាសន្ន
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+            }
+        };
+
+        // Initialize Lucide Icons initially
         lucide.createIcons();
 
-        let studentsData = [];
+        // Check Auth State
+        initAuth().then(() => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    loadingText.textContent = "កំពុងរៀបចំទិន្នន័យពី Database...";
+                    loadStudentsFromFirestore();
+                } else {
+                    // ប្រសិនបើចង់ឲ្យវាលោតទៅទំព័រ Login ពេលអត់មាន User កែសម្រួលកូដនៅទីនេះ
+                    // window.location.href = 'index.html';
+                }
+            });
+        });
 
-        // Helper Function to Calculate Age
+        // =======================
+        // Firestore Logic
+        // =======================
+        function loadStudentsFromFirestore() {
+            if (!currentUser) return;
+
+            // Database Path ដូចគ្នាទៅនឹង enrollment_V2.html
+            const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
+
+            // ប្រើ onSnapshot ដើម្បី Update តារាងដោយស្វ័យប្រវត្តិ (Real-time updates)
+            unsubscribeSnapshot = onSnapshot(studentsRef, (snapshot) => {
+                studentsData = [];
+                snapshot.forEach((doc) => {
+                    studentsData.push(doc.data());
+                });
+                
+                // Sort by createdAt (optional)
+                studentsData.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                
+                renderTable();
+                loadingOverlay.style.display = 'none';
+            }, (error) => {
+                console.error("Error fetching students: ", error);
+                loadingOverlay.style.display = 'none';
+                alert("មិនអាចទាញយកទិន្នន័យបានទេ សូមពិនិត្យមើលអ៉ីនធឺណិតរបស់អ្នក!");
+            });
+        }
+
+        // =======================
+        // Table Rendering & Helpers
+        // =======================
         function calculateAge(dobStr) {
             if(!dobStr || dobStr === '-') return '-';
             const dob = new Date(dobStr);
@@ -216,14 +314,10 @@
             return age;
         }
 
-        // Helper Format Location (without prefixes like ភូមិ, ឃុំ, etc.)
         function formatLocation(v, c, d, p) {
             let parts = [];
-            
-            // Function to strip specific prefixes from a string
             const clean = (str, regex) => str ? str.replace(regex, '').trim() : '';
             
-            // Remove common prefixes if they exist at the start of the string
             let village = clean(v, /^(ភូមិទី|ភូមិ)\s*/);
             let commune = clean(c, /^(ឃុំ\/សង្កាត់|សង្កាត់|ឃុំ)\s*/);
             let district = clean(d, /^(ស្រុក\/ខណ្ឌ|ក្រុង\/ស្រុក\/ខណ្ឌ|ខណ្ឌ|ស្រុក|ក្រុង)\s*/);
@@ -234,11 +328,9 @@
             if(district) parts.push(district);
             if(province) parts.push(province);
             
-            // Join with a single space
             return parts.length > 0 ? parts.join(' ') : '-';
         }
 
-        // Helper Format Parent
         function formatParent(name, job) {
             if(!name && !job) return '-';
             let res = name ? name.trim() : 'មិនស្គាល់';
@@ -255,17 +347,11 @@
             return dobStr;
         }
 
-        function loadStudents() {
+        function renderTable() {
             const tableBody = document.getElementById('studentTableBody');
             const emptyState = document.getElementById('emptyState');
             const tableWrapper = document.querySelector('.table-wrapper');
             
-            try {
-                studentsData = JSON.parse(localStorage.getItem('students') || '[]');
-            } catch (e) {
-                studentsData = [];
-            }
-
             document.getElementById('studentCount').textContent = `សិស្សសរុប៖ ${studentsData.length} នាក់ (ស្រី ${studentsData.filter(s => s.gender === 'ស្រី').length} នាក់)`;
 
             if (studentsData.length === 0) {
@@ -298,7 +384,7 @@
                         <div class="flex items-center gap-2">
                             <img src="${s.photo || 'https://api.dicebear.com/7.x/notionists/svg?seed=' + s.id}" 
                                  class="w-8 h-8 rounded-full border border-gray-200 object-cover cursor-pointer hover:ring-2 ring-indigo-400 no-print" 
-                                 onclick="showPhoto(this.src)">
+                                 onclick="window.showPhoto(this.src)">
                             <span class="whitespace-nowrap">${s.name || '-'}</span>
                         </div>
                     </td>
@@ -314,10 +400,10 @@
                     <td class="text-[11px] text-gray-500 italic">${s.otherRemarks || '-'}</td>
                     <td class="text-center no-print sticky right-0 bg-inherit border-l px-2 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">
                         <div class="flex items-center justify-center gap-1 bg-inherit">
-                            <button onclick="editStudent(${index})" class="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors" title="កែសម្រួល">
+                            <button onclick="window.editStudent(${index})" class="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors" title="កែសម្រួល">
                                 <i data-lucide="edit" class="w-4 h-4"></i>
                             </button>
-                            <button onclick="deleteStudent(${index})" class="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors" title="លុប">
+                            <button onclick="window.deleteStudent(${index})" class="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors" title="លុប">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -329,37 +415,69 @@
             lucide.createIcons();
         }
 
-        function showPhoto(src) {
+        // =======================
+        // Action Methods (Exposed to window for inline HTML onclick)
+        // =======================
+        window.showPhoto = function(src) {
             document.getElementById('modalImg').src = src;
             document.getElementById('photoModal').style.display = 'flex';
-        }
+        };
 
-        function editStudent(index) {
-            localStorage.setItem('editStudentIndex', index);
-            window.location.href = 'enrollment.html';
-        }
+        window.editStudent = function(index) {
+            const student = studentsData[index];
+            // រក្សា ID សិស្សទុក ដើម្បីទំព័រ enrollment_V2 ទាញយក
+            localStorage.setItem('editStudentId', student.id);
+            window.location.href = 'enrollment_V2.html'; // ត្រូវប្រាកដថាឈ្មោះទំព័រត្រូវគ្នា
+        };
 
-        function deleteStudent(index) {
-            if(confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សនេះមែនទេ?')) {
-                studentsData.splice(index, 1);
-                localStorage.setItem('students', JSON.stringify(studentsData));
-                loadStudents();
+        window.deleteStudent = async function(index) {
+            if(!currentUser) return;
+            const student = studentsData[index];
+
+            if(confirm(`តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សឈ្មោះ ${student.name} មែនទេ?`)) {
+                try {
+                    const docRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students', student.id.toString());
+                    await deleteDoc(docRef);
+                    // onSnapshot វានឹងដំណើរការលុបពី UI ដោយស្វ័យប្រវត្តិ
+                } catch (error) {
+                    console.error("Error deleting student: ", error);
+                    alert("មិនអាចលុបបានទេ សូមព្យាយាមម្តងទៀត។");
+                }
             }
-        }
+        };
 
-        function deleteAllStudents() {
+        window.deleteAllStudents = async function() {
             if(studentsData.length === 0) {
                 alert('មិនមានទិន្នន័យសម្រាប់លុបទេ!');
                 return;
             }
-            if(confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សទាំងអស់មែនទេ?\nបញ្ជាក់៖ សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ!')) {
-                studentsData = [];
-                localStorage.setItem('students', JSON.stringify(studentsData));
-                loadStudents();
-            }
-        }
+            if(!currentUser) return;
 
-        window.addEventListener('DOMContentLoaded', loadStudents);
+            if(confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សទាំងអស់មែនទេ?\nបញ្ជាក់៖ សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ!')) {
+                const btn = document.getElementById('deleteAllBtn');
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> កំពុងលុប...';
+                btn.disabled = true;
+
+                try {
+                    const batch = writeBatch(db);
+                    studentsData.forEach(student => {
+                        const docRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students', student.id.toString());
+                        batch.delete(docRef);
+                    });
+                    
+                    await batch.commit();
+                    // UI នឹង update ស្វ័យប្រវត្តិតាមរយៈ onSnapshot
+                } catch (error) {
+                    console.error("Error deleting all: ", error);
+                    alert("មានបញ្ហាក្នុងការលុបទិន្នន័យទាំងអស់!");
+                } finally {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    lucide.createIcons();
+                }
+            }
+        };
 
     </script>
 </body>
