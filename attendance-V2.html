@@ -401,7 +401,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your provided Firebase Config
         const firebaseConfig = {
@@ -530,20 +530,27 @@
                 currentClassId = data.currentClassId || 'default';
             }
 
-            // Fetch globals (students)
-            const globalSnap = await getDoc(doc(db, "users", currentUserId, "data", "globals"));
-            if (globalSnap.exists()) {
-                const globalStudents = globalSnap.data().students || [];
-                students = globalStudents.map(s => ({
+            // Fetch students from the new collection structure (same as student-listV2)
+            const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+            const studentsSnap = await getDocs(studentsRef);
+            const loadedStudents = [];
+            studentsSnap.forEach(docSnap => {
+                const s = docSnap.data();
+                loadedStudents.push({
                     uid: s.id ? String(s.id) : 'N/A',
-                    name: s.name,
-                    gender: s.gender,
+                    name: s.name || 'គ្មានឈ្មោះ',
+                    gender: s.gender || '-',
                     dob: s.dob || '-',
                     parent: s.father || s.mother || '-',
                     phone: s.phone || '-',
-                    photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
-                }));
-            }
+                    photo: s.photo || `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`,
+                    createdAt: s.createdAt || 0
+                });
+            });
+            
+            // Sort to match student-listV2 (by createdAt)
+            loadedStudents.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            students = loadedStudents;
 
             // Fetch teacher profile from the saved location in profile.html
             const profileRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'profile', 'data');
@@ -552,9 +559,25 @@
             
             if (profileSnap.exists()) {
                 teacherProfile = profileSnap.data();
-            } else if (globalSnap.exists()) {
+            } else {
                 // Fallback to older saved config if profile doesn't exist yet
-                teacherProfile = globalSnap.data().teacherProfile || {};
+                const globalSnap = await getDoc(doc(db, "users", currentUserId, "data", "globals"));
+                if (globalSnap.exists()) {
+                    teacherProfile = globalSnap.data().teacherProfile || {};
+                    // Also fallback students if the new collection is empty
+                    if (students.length === 0) {
+                        const globalStudents = globalSnap.data().students || [];
+                        students = globalStudents.map(s => ({
+                            uid: s.id ? String(s.id) : 'N/A',
+                            name: s.name,
+                            gender: s.gender,
+                            dob: s.dob || '-',
+                            parent: s.father || s.mother || '-',
+                            phone: s.phone || '-',
+                            photo: `https://api.dicebear.com/7.x/notionists/svg?seed=${s.id || s.name}`
+                        }));
+                    }
+                }
             }
 
             classConfig = {
