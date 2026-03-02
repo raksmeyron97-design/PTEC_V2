@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>តារាងវត្តមានសិស្សឌីណាមិក - តម្រឹមចំកណ្ដាល</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/ThyrithSor/momentkh@3.0.3/momentkh.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@400;700&family=Moul&display=swap');
+
+        :root {
+            --primary-font: 'Hanuman', serif;
+            --title-font: 'Moul', cursive;
+        }
+
+        body {
+            font-family: var(--primary-font);
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 1300px;
+            margin: auto;
+        }
+
+        #printArea {
+            width: 100%;
+            max-width: 297mm;
+            margin: auto;
+        }
+
+        .page-container {
+            width: 297mm;
+            /* ដក height ថេរចេញ ដើម្បីកុំឱ្យហៀរធ្លាក់បង្កើតជាទំព័រទទេ */
+            min-height: 190mm; 
+            padding: 10mm 12mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            color: black;
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+        }
+
+        .page-container:not(:last-child) {
+            margin-bottom: 30px;
+        }
+
+        .page-container:last-child {
+            margin-bottom: 0;
+            page-break-after: auto;
+        }
+
+        .kh-moul { font-family: var(--title-font); font-weight: normal; }
+
+        .admin-header { text-align: center; margin-bottom: 5px; }
+        .report-header-img { height: 55px; width: auto; margin: 8px auto 0 auto; display: block; }
+        
+        .org-info { line-height: 1.3; text-align: left; font-size: 11pt; font-weight: bold; margin-bottom: 5px; }
+        .org-info p { margin: 0; }
+        .title-section { width: 100%; text-align: center; margin-bottom: 5px; }
+        .info-row { display: flex; justify-content: space-between; width: 100%; font-size: 11pt; font-weight: bold; margin-bottom: 5px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            border: 1.2pt solid black;
+        }
+
+        thead th {
+            height: 1px;
+        }
+
+        th, td {
+            border: 0.8pt solid black;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0;
+            font-size: 10pt;
+            height: 26px;
+        }
+
+        th { background-color: #fcfcfc; font-weight: bold; }
+
+        .vertical-wrapper {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vertical-text {
+            display: block;
+            white-space: nowrap;
+            /* ប្រើ translate(-50%, -50%) ដើម្បីតម្រឹមកណ្ដាលឱ្យចំបង្អស់ */
+            transform: translate(-50%, -50%) rotate(-90deg); 
+            width: 52px;
+            text-align: center;
+            font-size: 9.5pt;
+            font-weight: bold;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            line-height: 1;
+        }
+
+        .id-col { width: 32px; }
+        .name-col { width: 180px; text-align: left; padding-left: 8px; font-weight: bold; overflow: hidden; white-space: nowrap; }
+        
+        .sun-bg { background-color: #fff1f1 !important; }
+        .sun-text { color: #d93025 !important; font-weight: bold; }
+
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            margin-top: 25px;
+            padding-top: 15px;
+        }
+
+        .sig-box { text-align: center; }
+        .lunar-date { font-size: 10pt; margin-bottom: 2px; white-space: nowrap; }
+        .solar-date { font-size: 10.5pt; font-weight: normal; margin-bottom: 8px; }
+        .role-title { font-family: var(--title-font); font-size: 11pt; }
+
+        .role { font-weight: bold; margin-top: 5px; margin-bottom: 45px; display: block; font-size: 11pt; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+        }
+
+        select, input { padding: 8px; font-family: var(--primary-font); border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 25px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; font-family: var(--primary-font); transition: 0.3s; }
+        
+        @media print {
+            .controls { display: none; }
+            body { padding: 0; background: white; }
+            .page-container { 
+                margin: 0 !important; 
+                border: none; 
+                box-shadow: none; 
+                min-height: auto;
+                page-break-after: always;
+            }
+            .page-container:last-child {
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <label>ខែ៖</label>
+        <select id="monthSelect"></select>
+        <label>ឆ្នាំ៖</label>
+        <input type="number" id="yearInput" value="2026">
+        <label>ចំនួនសិស្ស៖</label>
+        <input type="number" id="studentCount" value="45" min="1" max="100">
+        
+        <button id="btnDownload" onclick="downloadPDF()" style="background: #d93025; color: white;">ទាញយក PDF</button>
+        <button onclick="window.print()" style="background: #1a73e8; color: white;">បោះពុម្ព</button>
+    </div>
+
+    <div id="printArea"></div>
+</div>
+
+<script>
+    const months = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+    const days = ["អាទិត្យ", "ច័ន្ទ", "អង្គារ", "ពុធ", "ព្រហស្បតិ៍", "សុក្រ", "សៅរ៍"];
+    const khDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+    
+    function toKhmerNum(num) { 
+        return num.toString().split('').map(d => khDigits[d] || d).join(''); 
+    }
+    
+    const monthSelect = document.getElementById('monthSelect');
+    const yearInput = document.getElementById('yearInput');
+    const studentCountInput = document.getElementById('studentCount');
+    const printArea = document.getElementById('printArea');
+
+    months.forEach((m, i) => {
+        let opt = document.createElement('option');
+        opt.value = i;
+        opt.innerHTML = m;
+        monthSelect.appendChild(opt);
+    });
+
+    function createPage(startIdx, endIdx, isFirst, isLast, customData = null) {
+        const mIdx = parseInt(monthSelect.value);
+        const year = parseInt(yearInput.value);
+        const daysCount = new Date(year, mIdx + 1, 0).getDate();
+        
+        const className = customData ? customData.className : "..................";
+        const school = customData ? customData.school : "..................";
+        const org1 = customData ? customData.org1 : "មន្ទីរអប់រំ យុវជន និងកីឡា ខេត្ត..................";
+        const org2 = customData ? customData.org2 : "ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុក..................";
+        const students = customData ? customData.students : [];
+        const attendance = customData ? customData.attendance : {};
+
+        let html = `<div class="page-container">`;
+        
+        if (isFirst) {
+            html += `
+                <div class="admin-header">
+                    <h3 class="kh-moul" style="font-size: 14pt; margin:0;">ព្រះរាជាណាចក្រកម្ពុជា</h3>
+                    <h3 class="kh-moul" style="font-size: 14pt; margin:0;">ជាតិ សាសនា ព្រះមហាក្សត្រ</h3>
+                    <img src="https://lh3.googleusercontent.com/d/1BnGzoisjHxGRiMbsrP-rZ1F9zvSfdtAh" class="report-header-img" crossorigin="anonymous" style="height: 20px; width: auto;">
+                </div>
+                <div class="org-info">
+                    <p style="font-size: 12pt;">${org1}</p>
+                    <p style="font-size: 12pt;">${org2}</p>
+                    <p style="font-size: 12pt;">${school}</p>
+                </div>
+                <div class="title-section">
+                    <h2 class="kh-moul" style="font-size: 12pt; margin: 0;">របាយការណ៍វត្តមានសិស្សប្រចាំខែ ${months[mIdx]}</h2>
+                    <div class="info-row">
+                        <span style="font-size: 11pt;">ថ្នាក់ទី៖ ${className}</span>
+                        <span style="font-size: 11pt;">ឆ្នាំសិក្សា ២០២៥-២០២៦</span>
+                    </div>
+                </div>`;
+        }
+
+        html += `<table><thead>
+            <tr>
+                <th rowspan="3" class="id-col">ល.រ</th>
+                <th rowspan="3" class="name-col">គោត្តនាម និងនាម</th>
+                <th colspan="${daysCount}">កាលបរិច្ឆេទ</th>
+                <th colspan="3" rowspan="2">អវត្តមាន</th>
+                <th rowspan="3" style="width: 55px;">ផ្សេងៗ</th>
+            </tr>
+            <tr>`;
+        
+        for (let i = 1; i <= daysCount; i++) {
+            const date = new Date(year, mIdx, i);
+            const isSun = date.getDay() === 0;
+            html += `<th class="${isSun ? 'sun-bg sun-text' : ''}" style="height:16px;">${toKhmerNum(i)}</th>`;
+        }
+        html += `</tr><tr>`;
+        
+        for (let i = 1; i <= daysCount; i++) {
+            const date = new Date(year, mIdx, i);
+            const isSun = date.getDay() === 0;
+            html += `<th class="${isSun ? 'sun-bg sun-text' : ''}">
+                <div class="vertical-wrapper">
+                    <span class="vertical-text">${days[date.getDay()]}</span>
+                </div>
+            </th>`;
+        }
+        html += `
+            <th><div class="vertical-wrapper"><span class="vertical-text">ច្បាប់</span></div></th>
+            <th><div class="vertical-wrapper"><span class="vertical-text">អត់ច្បាប់</span></div></th>
+            <th><div class="vertical-wrapper"><span class="vertical-text">សរុប</span></div></th>
+        </tr></thead><tbody>`;
+
+        for (let i = startIdx; i <= endIdx; i++) {
+            const student = (students && students[i-1]) ? students[i-1] : null;
+            const studentName = student ? student.name : "";
+            
+            html += `<tr><td>${toKhmerNum(i)}</td><td class="name-col">${studentName}</td>`;
+            
+            let lCount = 0;
+            let aCount = 0;
+
+            for (let d = 1; d <= daysCount; d++) {
+                const dateStr = `${year}-${String(mIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                let statusChar = "";
+                
+                if (student && attendance && attendance[dateStr] && attendance[dateStr][student.uid]) {
+                    const status = attendance[dateStr][student.uid].status;
+                    if (status === 'P') { 
+                        statusChar = "✓"; 
+                    } else if (status === 'L') { 
+                        statusChar = "ច"; 
+                        lCount++; 
+                    } else if (status === 'A') { 
+                        statusChar = "អ"; 
+                        aCount++; 
+                    }
+                }
+
+                const date = new Date(year, mIdx, d);
+                html += `<td class="${date.getDay() === 0 ? 'sun-bg' : ''}" style="font-weight: bold;">${statusChar}</td>`;
+            }
+            
+            html += `<td>${lCount > 0 ? toKhmerNum(lCount) : ''}</td>
+                     <td>${aCount > 0 ? toKhmerNum(aCount) : ''}</td>
+                     <td>${(lCount + aCount) > 0 ? toKhmerNum(lCount + aCount) : ''}</td>
+                     <td></td></tr>`;
+        }
+        html += `</tbody></table>`;
+
+        if (isLast) {
+            const teacherName = customData ? customData.teacher : "..................";
+            
+            let lunarStr = "ថ្ងៃ................ខែ..........ឆ្នាំ..........";
+            const today = new Date();
+            if (typeof momentkh !== 'undefined') {
+                try {
+                    const khmerDateObj = momentkh.fromDate(today);
+                    lunarStr = momentkh.format(khmerDateObj).replace('ពុទ្ធសករាជ', 'ព.ស.');
+                } catch (e) { console.error("Error formatting khmer date", e); }
+            }
+            const solarStr = `ត្រូវនឹងថ្ងៃទី${toKhmerNum(today.getDate())} ខែ${months[today.getMonth()]} ឆ្នាំ${toKhmerNum(today.getFullYear())}`;
+
+            html += `
+                <div class="signature-section">
+                    <div class="sig-box">
+                        <p style="font-size: 11pt; margin-bottom: 2px;">បានឃើញ និងឯកភាព</p>
+                        <p class="role kh-moul">នាយកសាលា</p>
+                    </div>
+                    <div class="sig-box">
+                        <p style="font-size: 11pt; margin-bottom: 2px;">${lunarStr}</p>
+                        <p style="font-size: 11pt; margin-bottom: 5px;">${solarStr}</p>
+                        <p class="role kh-moul">គ្រូបន្ទុកថ្នាក់</p>
+                        <p class="kh-moul" style="margin-top:20px; position: relative; left: 40px;">${teacherName}</p>
+                    </div>
+                </div>`;
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
+    function render() {
+        const rawData = localStorage.getItem('temp_report_data');
+        let customData = null;
+        if (rawData) {
+            customData = JSON.parse(rawData);
+            monthSelect.value = customData.month;
+            yearInput.value = customData.year;
+            studentCountInput.value = customData.students.length;
+        }
+
+        printArea.innerHTML = "";
+        const total = parseInt(studentCountInput.value) || 0;
+        
+        const maxRowsFirstPage = 14;      
+        const maxRowsFirstPageSig = 9;   
+        const maxRowsOtherPage = 22;      
+        const maxRowsOtherPageSig = 16;   
+        const rowsToKeepWithSig = 4;      
+        
+        let current = 1;
+        let pageNum = 1;
+
+        while (current <= total || (total === 0 && pageNum === 1)) {
+            let isFirst = (pageNum === 1);
+            let remaining = total - current + 1;
+            
+            let limitNoSig = isFirst ? maxRowsFirstPage : maxRowsOtherPage;
+            let limitWithSig = isFirst ? maxRowsFirstPageSig : maxRowsOtherPageSig;
+            
+            let end;
+            let isLast = false;
+
+            if (total === 0) {
+                end = 0;
+                isLast = true;
+            } else if (remaining <= limitWithSig) {
+                end = current + remaining - 1;
+                isLast = true;
+            } else if (remaining > limitWithSig && remaining <= limitNoSig) {
+                let takeCount = remaining - rowsToKeepWithSig;
+                if (takeCount <= 0) takeCount = remaining;
+                end = current + takeCount - 1;
+                isLast = false;
+            } else {
+                end = current + limitNoSig - 1;
+                isLast = false;
+            }
+            
+            printArea.innerHTML += createPage(current, end, isFirst, isLast, customData);
+            
+            if (isLast || total === 0) break;
+            current = end + 1;
+            pageNum++;
+        }
+    }
+
+    async function downloadPDF() {
+        const btn = document.getElementById('btnDownload');
+        const originalText = btn.innerText;
+        btn.innerText = "កំពុងទាញយក...";
+        btn.disabled = true;
+
+        const pages = document.querySelectorAll('.page-container');
+        pages.forEach(p => p.style.marginBottom = '0');
+
+        const opt = {
+            margin:       0,
+            filename:     `វត្តមានសិស្ស_ខែ${months[monthSelect.value]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak:    { mode: ['css'] } 
+        };
+
+        html2pdf().set(opt).from(printArea).save().then(() => {
+            pages.forEach(p => p.style.marginBottom = ''); 
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
+    }
+
+    [monthSelect, yearInput, studentCountInput].forEach(el => el.addEventListener('change', () => {
+        localStorage.removeItem('temp_report_data');
+        render();
+    }));
+
+    window.onload = render;
+</script>
+</body>
+</html>

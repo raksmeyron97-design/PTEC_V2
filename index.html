@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTEC - ជំនួយការគ្រូបង្រៀនឌីជីថល</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;700&family=Moul&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --primary: #0054a6; }
+        body { font-family: 'Kantumruy Pro', sans-serif; background: #f0f4f8; min-height: 100vh; margin: 0; padding: 0; overflow-x: hidden; }
+        .kh-moul { font-family: 'Moul', cursive; }
+        
+        .bg-animate { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 10% 20%, #e0e7ff 0%, transparent 40%), radial-gradient(circle at 90% 80%, #dcfce7 0%, transparent 40%), radial-gradient(circle at 50% 50%, #fef3c7 0%, transparent 50%); animation: moveBg 20s infinite alternate ease-in-out; }
+        @keyframes moveBg { from { transform: scale(1); } to { transform: scale(1.1); } }
+        
+        .card-3d { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer; }
+        .card-3d:hover { transform: translateY(-10px); background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05); }
+        
+        .app-icon-container { width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; border-radius: 1.25rem; }
+    </style>
+</head>
+<body>
+    <div class="bg-animate"></div>
+
+    <!-- ផ្ទាំង Login (នឹងបង្ហាញបើមិនទាន់ Login) -->
+    <div id="auth-section" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/60 backdrop-blur-md transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 mx-4">
+            <div class="text-center mb-8">
+                <img src="https://www.ptec.edu.kh/wp-content/uploads/2020/06/cropped-PTEC_Banner-2048x459.png" alt="PTEC Logo" class="h-10 md:h-12 mx-auto mb-6">
+                <h2 class="kh-moul text-xl text-[#0054a6]">ចូលគណនីប្រព័ន្ធ</h2>
+                <p class="text-gray-500 text-sm mt-2">ប្រព័ន្ធជំនួយការគ្រូបង្រៀនឌីជីថល</p>
+            </div>
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">អុីមែល (Email)</label>
+                    <input type="email" id="email" required placeholder="admin@ptec.edu.kh" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0054a6] focus:border-transparent outline-none transition bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">ពាក្យសម្ងាត់ (Password)</label>
+                    <input type="password" id="password" required placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0054a6] focus:border-transparent outline-none transition bg-gray-50">
+                </div>
+                <div id="auth-error" class="text-red-500 text-sm hidden bg-red-50 p-3 rounded-md border border-red-100"></div>
+                <button type="submit" id="login-btn" class="w-full bg-[#0054a6] hover:bg-blue-800 text-white font-bold py-3.5 rounded-lg transition shadow-lg flex justify-center items-center">
+                    <span id="btn-text">ចូលគណនី (Login)</span>
+                    <i data-lucide="loader-2" id="btn-loader" class="hidden animate-spin ml-2 w-5 h-5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ផ្ទាំងមាតិកាដើម (នឹងបង្ហាញនៅពេល Login ជោគជ័យ) -->
+    <div id="main-content" class="hidden opacity-0 transition-opacity duration-500">
+        <nav class="sticky top-0 z-50 px-4 md:px-8 py-3 bg-white/80 backdrop-blur-lg border-b border-white/40 shadow-sm">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <img src="https://www.ptec.edu.kh/wp-content/uploads/2020/06/cropped-PTEC_Banner-2048x459.png" alt="PTEC Logo" class="h-8 md:h-12 w-auto">
+                <div class="flex items-center space-x-4 md:space-x-6 text-sm font-bold text-[#0054a6]">
+                    <span id="user-email-display" class="hidden md:block text-gray-500 font-normal"></span>
+                    <a href="#" class="hover:underline hidden sm:block">ទំព័រដើម</a>
+                    <button id="logout-btn" class="flex items-center text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-md transition">
+                        <i data-lucide="log-out" class="w-4 h-4 mr-1.5"></i> ចាកចេញ
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <header class="pt-12 pb-8 text-center px-6">
+            <h1 class="kh-moul text-2xl md:text-3xl text-[#0054a6] mb-4">ប្រព័ន្ធជំនួយការគ្រូបង្រៀនឌីជីថល</h1>
+            <p class="text-[#0054a6]/80 text-sm md:text-lg font-semibold italic">គ្រប់គ្រងព័ត៌មានសិស្ស និងការបង្រៀន</p>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-6 py-8 pb-24">
+            <div id="app-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                <!-- Grid items generated by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts សម្រាប់បង្កើត Grid Menu -->
+    <script>
+        const apps = [
+            { name: 'បញ្ចូលព័ត៌មានសិស្ស', icon: 'user-plus', url: 'enrollment_V2.html', color: 'from-blue-500 to-blue-600' },
+            { name: 'បញ្ជីឈ្មោះសិស្ស', icon: 'users', url: 'student-list.html', color: 'from-purple-500 to-purple-600' },
+            { name: 'ចុះវត្តមានតាមប្លង់តុ', icon: 'layout-grid', url: 'table-layout.html', color: 'from-orange-500 to-orange-600' },
+            { name: 'បញ្ចូលពិន្ទុ', icon: 'edit-3', url: 'enter-monthly-score.html', color: 'from-green-500 to-emerald-600' },
+            { name: 'តារាងពិន្ទុសរុប', icon: 'table-2', url: 'subject-scores.html', color: 'from-teal-500 to-teal-600' },
+            { name: 'តារាងចំណាត់ថ្នាក់', icon: 'bar-chart-3', url: 'ranking-print.html', color: 'from-purple-600 to-purple-800' },
+            { name: 'វិភាគទិន្នន័យសរុប', icon: 'line-chart', url: 'data_analysing_score_student.html', color: 'from-rose-600 to-pink-700'},
+            { name: 'វិភាគតាមមុខវិជ្ជា', icon: 'target', url: 'data_analyses_by_subject.html', color: 'from-blue-600 to-indigo-700' },
+            { name: 'រដ្ឋបាលថ្នាក់រៀន', icon: 'folder-open', url: 'Main_adr.html', color: 'from-blue-700 to-indigo-800' },
+            { name: 'បញ្ចូលពិន្ទុកិច្ចការផ្ទះ', icon: 'book-marked', url: 'enter-homework-score.html', color: 'from-indigo-500 to-indigo-600' },
+            { name: 'បញ្ជីវត្តមានប្រចាំខែ', icon: 'calendar-check', url: 'attendance-1.html', color: 'from-pink-500 to-pink-600' },
+            { name: 'តារាងកិត្តិយស', icon: 'award', url: 'honor-roll.html', color: 'from-rose-500 to-rose-600' },
+            { name: 'បញ្ជីបូកសរុបលទ្ធផលប្រចាំឆ្នាំ', icon: 'pie-chart', url: 'Years_score_subject.html', color: 'from-cyan-500 to-cyan-600' },
+            { name: 'សៀវភៅតាមដាន', icon: 'book-open', url: 'student-tracking.html', color: 'from-sky-500 to-sky-600' },
+            { name: 'បញ្ជីសារពើភ័ណ្ឌ', icon: 'package', url: 'inventory.html', color: 'from-amber-500 to-amber-600' },
+            { name: 'ព័ត៌មានគណនី', icon: 'user-cog', url: 'profile.html', color: 'from-slate-500 to-slate-600' }
+        ];
+
+        const grid = document.getElementById('app-grid');
+        
+        apps.forEach(app => {
+            const card = document.createElement('div');
+            card.className = 'card-3d group p-4 md:p-6 flex flex-col items-center text-center select-none';
+            card.onclick = () => {
+                if(app.url !== '#') {
+                    window.location.href = app.url;
+                } else {
+                    alert('មុខងារនេះកំពុងអភិវឌ្ឍ!');
+                }
+            };
+            
+            card.innerHTML = `
+                <div class="mb-3">
+                    <div class="app-icon-container bg-gradient-to-tr ${app.color} shadow-md transition-transform group-hover:scale-110 duration-300">
+                        <i data-lucide="${app.icon}" class="w-7 h-7 md:w-8 md:h-8 text-white"></i>
+                    </div>
+                </div>
+                <h3 class="text-[10px] md:text-xs font-bold text-slate-800 leading-tight">${app.name}</h3>
+            `;
+            grid.appendChild(card);
+        });
+        
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+
+    <!-- Firebase Authentication Logic (Module) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // UI Elements
+        const authSection = document.getElementById('auth-section');
+        const mainContent = document.getElementById('main-content');
+        const loginForm = document.getElementById('login-form');
+        const authError = document.getElementById('auth-error');
+        const btnText = document.getElementById('btn-text');
+        const btnLoader = document.getElementById('btn-loader');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userEmailDisplay = document.getElementById('user-email-display');
+
+        // Track Authentication State
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // ប្រសិនបើបានចូលគណនីរួចរាល់
+                authSection.style.display = 'none';
+                mainContent.classList.remove('hidden');
+                setTimeout(() => mainContent.classList.remove('opacity-0'), 50); // Fade in effect
+                userEmailDisplay.textContent = user.email;
+            } else {
+                // ប្រសិនបើមិនទាន់ចូលគណនី
+                mainContent.classList.add('hidden');
+                mainContent.classList.add('opacity-0');
+                authSection.style.display = 'flex';
+                authSection.classList.remove('opacity-0');
+            }
+        });
+
+        // Handle Login Submission
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Loading state
+            btnText.textContent = 'កំពុងចូល...';
+            btnLoader.classList.remove('hidden');
+            authError.classList.add('hidden');
+            loginBtn.disabled = true;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // ប្រសិនបើជោគជ័យ onAuthStateChanged នឹងធ្វើការលាក់ផ្ទាំងនេះដោយស្វ័យប្រវត្តិ
+            } catch (error) {
+                console.error("Login Error:", error);
+                authError.textContent = 'អុីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវឡើយ។ សូមព្យាយាមម្តងទៀត!';
+                authError.classList.remove('hidden');
+            } finally {
+                // Reset loading state
+                btnText.textContent = 'ចូលគណនី (Login)';
+                btnLoader.classList.add('hidden');
+                loginBtn.disabled = false;
+            }
+        });
+
+        // Handle Logout
+        logoutBtn.addEventListener('click', () => {
+            if(confirm('តើអ្នកពិតជាចង់ចាកចេញពីប្រព័ន្ធមែនទេ?')) {
+                signOut(auth).catch((error) => {
+                    console.error("Sign Out Error", error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
