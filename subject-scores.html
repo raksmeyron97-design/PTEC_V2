@@ -344,8 +344,9 @@
 
     <!-- Firebase Script and Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
@@ -358,7 +359,11 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+
+        const PTEC_APP_ID = "ptec-app";
+        let currentUser = null;
 
         // --- Configuration ---
         const config = {
@@ -720,6 +725,7 @@
         }
 
         window.loadData = async function() {
+            if (!currentUser) return;
             showLoading(true);
             updateMonthCountBadge();
             const conf = config[currentMode];
@@ -727,21 +733,18 @@
             renderTableHeader(conf);
 
             try {
-                // Load Students from Firestore
-                const studentsSnap = await getDocs(collection(db, "students"));
+                // Load Students from Firestore properly
+                const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
+                const studentsSnap = await getDocs(studentsRef);
                 let loadedStudents = [];
                 studentsSnap.forEach(doc => {
                     loadedStudents.push({ id: doc.id, ...doc.data() });
                 });
                 
-                if (loadedStudents.length === 0) {
-                     const storedStudents = localStorage.getItem('students');
-                     loadedStudents = storedStudents ? JSON.parse(storedStudents) : [];
-                }
-                
                 // Load Scores for current period
                 const docId = getStorageKey();
-                const scoresSnap = await getDoc(doc(db, "scores", docId));
+                const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                const scoresSnap = await getDoc(scoresRef);
                 const parsedScores = scoresSnap.exists() ? scoresSnap.data() : {};
                 
                 // Load monthly caches if semester mode
@@ -750,7 +753,8 @@
                 if (currentMode === 'semester') {
                     for (const month of selectedSemesterMonths) {
                         const mDocId = `${year}_${month}`;
-                        const mSnap = await getDoc(doc(db, "scores", mDocId));
+                        const mRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', mDocId);
+                        const mSnap = await getDoc(mRef);
                         allMonthsScoresCache[month] = mSnap.exists() ? mSnap.data() : {};
                     }
                 }
@@ -817,6 +821,7 @@
         }
 
         window.saveScores = async function() {
+            if (!currentUser) return;
             const btn = document.querySelector('button[onclick="saveScores()"]');
             const originalHTML = btn.innerHTML;
             
@@ -828,7 +833,8 @@
             const docId = getStorageKey();
 
             try {
-                await setDoc(doc(db, "scores", docId), scoresToSave, { merge: true });
+                const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                await setDoc(scoresRef, scoresToSave, { merge: true });
                 
                 setTimeout(() => {
                     btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> រួចរាល់!';
@@ -855,7 +861,7 @@
             }
         }
 
-        // --- EXPORT SETTINGS LOGIC (Keep Local Storage for UI state) ---
+        // --- EXPORT SETTINGS LOGIC ---
         window.openExportModal = function() {
             if (students.length === 0) {
                 alert("មិនមានទិន្នន័យសម្រាប់ទាញយកទេ! សូមបញ្ចូលឈ្មោះសិស្សជាមុនសិន។"); return;
@@ -1021,9 +1027,9 @@
                         { s: { r: 8, c: 0 }, e: { r: 9, c: 0 } }, { s: { r: 8, c: 1 }, e: { r: 9, c: 1 } },
                     ];
 
-                    cIdx = 2;
-                    conf.groups.forEach(g => { ws['!merges'].push({ s: { r: 8, c: cIdx }, e: { r: 8, c: cIdx + g.cols - 1 } }); cIdx += g.cols; });
-                    ws['!merges'].push({ s: { r: 8, c: cIdx }, e: { r: 8, c: cIdx + resultColSpan - 1 } });
+                    let cIdxLocal = 2;
+                    conf.groups.forEach(g => { ws['!merges'].push({ s: { r: 8, c: cIdxLocal }, e: { r: 8, c: cIdxLocal + g.cols - 1 } }); cIdxLocal += g.cols; });
+                    ws['!merges'].push({ s: { r: 8, c: cIdxLocal }, e: { r: 8, c: cIdxLocal + resultColSpan - 1 } });
                     ws['!merges'].push({ s: { r: endRow, c: 0 }, e: { r: endRow, c: 1 } }); 
                     
                     ws['!merges'].push({ s: { r: sigRow - 2, c: alignRightStart - 3 }, e: { r: sigRow - 2, c: totalCols - 1 } });
@@ -1148,14 +1154,22 @@
         }
 
         // --- INIT ---
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             window.updateMonthOptions();
-            await window.loadData();
             window.loadExportSettings(); 
             
             document.querySelectorAll('#exportModalContent input').forEach(input => {
                 input.addEventListener('input', window.saveExportSettings);
+            });
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await window.loadData();
+                } else {
+                    console.error("No user logged in");
+                }
             });
         });
     </script>

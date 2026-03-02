@@ -295,9 +295,9 @@
 
     <!-- Firebase System & Core Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -313,6 +313,8 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        
+        const PTEC_APP_ID = "ptec-app";
 
         // --- Subject Configuration ---
         const subjectsConfig = [
@@ -363,10 +365,7 @@
                     currentUserId = user.uid;
                     await window.loadData();
                 } else {
-                    signInAnonymously(auth).catch(error => {
-                        console.error("Auth Error:", error);
-                        window.loadData();
-                    });
+                    console.error("Not logged in");
                 }
             });
         });
@@ -402,19 +401,15 @@
                 students.map(s => `<option value="${s.uid || s.id}">${s.name}</option>`).join('');
         }
 
-        function getStorageKey(baseKey) {
-            const currentClassId = localStorage.getItem('current_class_id') || 'default';
-            if (currentClassId === 'default') return baseKey;
-            return baseKey + '_' + currentClassId;
-        }
-
         window.loadData = async function() {
+            if (!currentUserId) return;
             showLoading(true);
             const year = document.getElementById('yearSelect').value;
             
             try {
-                // 1. Load Students from Firestore
-                const studentsSnap = await getDocs(collection(db, "students"));
+                // 1. Load Students from Firestore properly
+                const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+                const studentsSnap = await getDocs(studentsRef);
                 let loadedStudents = [];
                 studentsSnap.forEach(doc => {
                     loadedStudents.push({ id: doc.id, uid: doc.id, ...doc.data() });
@@ -422,27 +417,17 @@
                 
                 if (loadedStudents.length > 0) {
                     students = loadedStudents;
-                } else {
-                    const studentsRaw = localStorage.getItem(getStorageKey('students_db')) || localStorage.getItem('students');
-                    students = studentsRaw ? JSON.parse(studentsRaw) : [];
                 }
-                
                 populateStudentSelector();
 
                 // 2. Load Scores for ALL months of selected year (needed for trend chart)
                 scoresDataAllMonths = {};
                 for (const month of monthsOrder) {
                     const docId = `${year}_${month}`;
-                    const snap = await getDoc(doc(db, "scores", docId));
+                    const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'scores', docId);
+                    const snap = await getDoc(scoresRef);
                     if (snap.exists()) {
                         scoresDataAllMonths[month] = snap.data();
-                    } else {
-                        // Fallback local
-                        const key = `scores_${year}_${month}`; 
-                        const data = localStorage.getItem(key);
-                        if (data) {
-                            scoresDataAllMonths[month] = JSON.parse(data);
-                        }
                     }
                 }
 
@@ -539,7 +524,7 @@
                         </div>
                         <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i data-lucide="bar-chart-2" class="w-6 h-6"></i></div>
                     </div>
-                    <p class="text-xs text-slate-500 mt-2 font-medium">ក្នុងចំណោមសិស្សមានពិន្ទុ ${count} នាក់</p>
+                    <p class="text-xs text-slate-500 mt-2 font-medium">ក្នុងចំណោមសិស្សមានពិន្ទ ${count} នាក់</p>
                 </div>
 
                 <div class="glass-card p-4 border-l-4 border-green-500 hover:scale-105 transition duration-300">
