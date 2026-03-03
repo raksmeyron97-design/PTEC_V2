@@ -296,6 +296,7 @@
     <!-- Firebase System & Core Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -313,6 +314,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const analytics = getAnalytics(app);
         
         const PTEC_APP_ID = "ptec-app";
 
@@ -365,7 +367,13 @@
                     currentUserId = user.uid;
                     await window.loadData();
                 } else {
-                    console.error("Not logged in");
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        // បើ Offline ព្យាយាមទាញចេញពី Local ធម្មតា
+                        await window.loadData();
+                    }
                 }
             });
         });
@@ -402,21 +410,26 @@
         }
 
         window.loadData = async function() {
-            if (!currentUserId) return;
             showLoading(true);
             const year = document.getElementById('yearSelect').value;
             
             try {
                 // 1. Load Students from Firestore properly
-                const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
-                const studentsSnap = await getDocs(studentsRef);
                 let loadedStudents = [];
-                studentsSnap.forEach(doc => {
-                    loadedStudents.push({ id: doc.id, uid: doc.id, ...doc.data() });
-                });
+                if (currentUserId) {
+                    const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
+                    const studentsSnap = await getDocs(studentsRef);
+                    studentsSnap.forEach(doc => {
+                        loadedStudents.push({ id: doc.id, uid: doc.id, ...doc.data() });
+                    });
+                }
                 
+                // Fallback local
                 if (loadedStudents.length > 0) {
                     students = loadedStudents;
+                } else {
+                    const storedStudents = localStorage.getItem('students_db') || localStorage.getItem('students');
+                    if (storedStudents) students = JSON.parse(storedStudents);
                 }
                 populateStudentSelector();
 
@@ -424,11 +437,22 @@
                 scoresDataAllMonths = {};
                 for (const month of monthsOrder) {
                     const docId = `${year}_${month}`;
-                    const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'scores', docId);
-                    const snap = await getDoc(scoresRef);
-                    if (snap.exists()) {
-                        scoresDataAllMonths[month] = snap.data();
+                    let data = {};
+                    if (currentUserId) {
+                        const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'scores', docId);
+                        const snap = await getDoc(scoresRef);
+                        if (snap.exists()) {
+                            data = snap.data();
+                        } else {
+                            // Fallback to older paths
+                            const oldSnap = await getDoc(doc(db, "scores", docId)).catch(()=>null);
+                            if (oldSnap && oldSnap.exists()) data = oldSnap.data();
+                        }
                     }
+                    if (Object.keys(data).length === 0) {
+                        data = JSON.parse(localStorage.getItem(`scores_${docId}`) || '{}');
+                    }
+                    scoresDataAllMonths[month] = data;
                 }
 
                 window.analyzeSubject();

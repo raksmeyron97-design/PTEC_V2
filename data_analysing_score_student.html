@@ -387,6 +387,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -400,6 +401,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
@@ -459,7 +461,7 @@
             const year = document.getElementById('yearSelect').value;
             
             try {
-                // 1. Fetch Students (Updated to use secure user-specific path)
+                // 1. Fetch Students
                 let loadedStudents = [];
                 if (currentUserId) {
                     const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'students');
@@ -493,10 +495,7 @@
                     let snap = null;
 
                     if (currentUserId) {
-                        // Priority 1: Check new secure path
                         snap = await getDoc(doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUserId, 'scores', docId)).catch(() => null);
-                        
-                        // Priority 2: Check old generic root path just in case scoring page hasn't migrated
                         if (!snap || !snap.exists()) {
                             snap = await getDoc(doc(db, "scores", docId)).catch(() => null);
                         }
@@ -505,7 +504,6 @@
                     if (snap && snap.exists()) {
                         scoresHistory[month] = snap.data();
                     } else {
-                        // Fallback local
                         const key = `scores_${year}_${month}`; 
                         const data = localStorage.getItem(key);
                         if (data) {
@@ -514,18 +512,18 @@
                     }
                 }
 
-                // 3. Fetch Attendance (Updated to safely fetch from users > currentUserId > data)
+                // 3. Fetch Attendance matching the EXACT path saved in attendance-1.html
                 attendanceHistory = {};
                 let currentClassId = localStorage.getItem('current_class_id') || 'default';
                 
                 if (currentUserId) {
-                    // Try to get class info from metadata
+                    // Check metadata for active class
                     const metaSnap = await getDoc(doc(db, "users", currentUserId, "data", "metadata")).catch(() => null);
                     if (metaSnap && metaSnap.exists() && metaSnap.data().currentClassId) {
                         currentClassId = metaSnap.data().currentClassId;
                     }
                     
-                    // Fetch attendance
+                    // Fetch attendance from Cloud (Must match attendance-1.html path)
                     const classSnap = await getDoc(doc(db, "users", currentUserId, "data", `class_${currentClassId}`)).catch(() => null);
                     if (classSnap && classSnap.exists() && classSnap.data().attendanceHistory) {
                         attendanceHistory = classSnap.data().attendanceHistory;

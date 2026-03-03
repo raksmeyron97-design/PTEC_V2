@@ -171,19 +171,48 @@
 <div class="container">
     <div class="controls">
         <label>ឆ្នាំសិក្សា៖</label>
-        <select id="yearSelect" onchange="updateMonthOptions(); render()"></select>
+        <select id="yearSelect" onchange="window.updateMonthOptions(); window.render()"></select>
 
         <label>ខែ៖</label>
-        <select id="monthSelect" onchange="render()"></select>
+        <select id="monthSelect" onchange="window.render()"></select>
         
-        <button id="btnDownload" onclick="downloadPDF()" style="background: #d93025; color: white;">ទាញយក PDF</button>
+        <button id="btnDownload" onclick="window.downloadPDF()" style="background: #d93025; color: white;">ទាញយក PDF</button>
         <button onclick="window.print()" style="background: #1a73e8; color: white;">បោះពុម្ព</button>
     </div>
 
-    <div id="printArea"></div>
+    <div id="printArea">
+        <div style="text-align:center; padding: 40px; color: #666;">កំពុងទាញយកទិន្នន័យ...</div>
+    </div>
 </div>
 
-<script>
+<script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+        authDomain: "classroom-management-82382.firebaseapp.com",
+        projectId: "classroom-management-82382",
+        storageBucket: "classroom-management-82382.firebasestorage.app",
+        messagingSenderId: "146641865620",
+        appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+        measurementId: "G-PX867PB723"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const PTEC_APP_ID = "ptec-app";
+    
+    let currentUser = null;
+    let students = [];
+    let hwScores = {}; 
+    let teacherProfile = {};
+
     const allMonthsMap = [
         { id: 'nov', label: 'វិច្ឆិកា', isNextYear: false },
         { id: 'dec', label: 'ធ្នូ', isNextYear: false },
@@ -212,18 +241,33 @@
         return num.toString().split('').map(d => khDigits[d] || d).join(''); 
     }
 
-    let students = [];
-    let hwScores = {}; // Now supports detailed {days: {}, total: X}
-    let teacherProfile = {};
-
     const yearSelect = document.getElementById('yearSelect');
     const monthSelect = document.getElementById('monthSelect');
     const printArea = document.getElementById('printArea');
 
+    // 1. Fetch Teacher Profile securely from Firestore
+    async function loadTeacherProfile() {
+        if (currentUser) {
+            try {
+                const docRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'profile', 'data');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    teacherProfile = docSnap.data();
+                    return;
+                }
+            } catch (error) {
+                console.error("Error fetching online profile:", error);
+            }
+        }
+        // Fallback to local storage if not available or offline
+        try { teacherProfile = JSON.parse(localStorage.getItem('teacherProfile') || '{}'); } catch (e) { teacherProfile = {}; }
+    }
+
     // Initialize Setup
-    function init() {
+    async function init() {
         // Setup Years
         const years = ['2025-2026', '2026-2027', '2027-2028', '2028-2029'];
+        yearSelect.innerHTML = ''; // Clear prior entries
         years.forEach(y => {
             let opt = document.createElement('option');
             opt.value = y;
@@ -231,16 +275,17 @@
             yearSelect.appendChild(opt);
         });
 
+        // Load offline students list
         try { students = JSON.parse(localStorage.getItem('students') || '[]'); } catch (e) { students = []; }
-        try { teacherProfile = JSON.parse(localStorage.getItem('teacherProfile') || '{}'); } catch (e) { teacherProfile = {}; }
 
+        // Automatically set the year depending on Profile info
         if (teacherProfile.academic_year) {
             const index = Array.from(yearSelect.options).findIndex(opt => opt.value === teacherProfile.academic_year || opt.innerHTML === teacherProfile.academic_year);
             if (index !== -1) yearSelect.selectedIndex = index;
         }
 
         updateMonthOptions();
-        render();
+        await render();
     }
 
     function updateMonthOptions() {
@@ -260,10 +305,24 @@
         monthSelect.innerHTML = optionsHTML;
     }
 
-    function loadScores() {
+    // Fetch Homework Scores securely from Firebase
+    async function loadScores() {
         const newKey = `hw_scores_v2_${yearSelect.value}_${monthSelect.value}`;
         const oldKey = `hw_scores_${yearSelect.value}_${monthSelect.value}`;
         
+        try {
+            // Attempt to fetch from Firebase
+            const docRef = doc(db, "homework_scores", newKey);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().scores) {
+                hwScores = docSnap.data().scores;
+                return;
+            }
+        } catch (error) {
+            console.error("Error loading scores online:", error);
+        }
+
+        // Local Storage fallback
         try {
             let data = JSON.parse(localStorage.getItem(newKey));
             if (data) {
@@ -320,7 +379,7 @@
         const monthName = monthObj ? monthObj.label : '';
         const dateColumns = generateDateColumns(mId, yearVal);
         
-        // Profile Data Mapping
+        // Dynamic Info based on teacher profile fetched from Firebase
         const org1 = teacherProfile.management_unit_1 || "មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានី/ខេត្ត..................";
         const org2 = teacherProfile.management_unit_2 || "ការិយាល័យអប់រំ យុវជន និងកីឡា ក្រុង/ស្រុក..................";
         const school = teacherProfile.school_name_admin || "សាលា..............................";
@@ -455,8 +514,8 @@
         return html;
     }
 
-    function render() {
-        loadScores();
+    async function render() {
+        await loadScores(); // Wait for data to load from Firebase before rendering
         printArea.innerHTML = "";
         const total = students.length;
         
@@ -538,8 +597,18 @@
         });
     }
 
-    // Run on load
-    window.onload = init;
+    // Expose functions to window (since type="module" shields scope)
+    window.updateMonthOptions = updateMonthOptions;
+    window.render = render;
+    window.downloadPDF = downloadPDF;
+
+    // Trigger initialization on auth state change
+    onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        await loadTeacherProfile(); // Now loads from Firebase
+        await init();
+    });
+
 </script>
 </body>
 </html>

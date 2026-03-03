@@ -42,7 +42,7 @@
         .bg-l { background: #fef9c3; color: #854d0e; }
         .bg-a { background: #fee2e2; color: #991b1b; }
 
-        /* --- Seating Plan Styles (Imported from standalone) --- */
+        /* --- Seating Plan Styles --- */
         .seat { transition: all 0.2s; cursor: pointer; user-select: none; }
         .seat.empty { border: 2px dashed #cbd5e1; background: #f1f5f9; color: #94a3b8; }
         .seat.empty:hover { border-color: var(--primary); background: #e0f2fe; color: var(--primary); transform: scale(1.05); z-index: 50; }
@@ -62,7 +62,7 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(4px);">
         <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-[#0054a6] mb-2"></i>
-        <p class="font-bold text-slate-600">កំពុងទាញយកទិន្នន័យពី Cloud...</p>
+        <p class="font-bold text-slate-600" id="loadingText">កំពុងទាញយកទិន្នន័យពី Cloud...</p>
     </div>
 
     <nav class="bg-[#0054a6] text-white p-4 shadow-lg sticky top-0 z-50 no-print">
@@ -109,7 +109,7 @@
                 
                 <div class="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg mb-6 flex items-start gap-2">
                     <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
-                    <p>ទិន្នន័យសិស្សត្រូវបានទាញយកដោយស្វ័យប្រវត្តិពី <b>បញ្ជីឈ្មោះសិស្ស (Student List)</b>។ បន្ទាប់ពីកត់ត្រា និងចុចរក្សាទុករួច ទិន្នន័យនឹងត្រូវចាក់សោមិនអាចកែប្រែបានទេ។ (ចំណាំ៖ ថ្ងៃអាទិត្យ មិនអនុញ្ញាតឱ្យកត់ត្រាវត្តមានទេ)</p>
+                    <p>ទិន្នន័យសិស្សត្រូវបានទាញយកដោយស្វ័យប្រវត្តិពី <b>បញ្ជីឈ្មោះសិស្ស (Student List)</b>។ បន្ទាប់ពីកត់ត្រា និងចុចរក្សាទុករួច ទិន្នន័យនឹងត្រូវចាក់សោមិនអាចកែប្រែបានទេ ហើយវានឹងត្រូវរក្សាទុកទៅកាន់ Cloud ស្វ័យប្រវត្តិ។</p>
                 </div>
 
                 <div id="attendance-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -396,7 +396,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -410,6 +411,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
@@ -504,13 +506,11 @@
                     });
                 });
                 
-                // Sort array to maintain consistency
                 loadedStudents.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
                 students = loadedStudents;
                 
             } catch (error) {
                 console.error("Error fetching students from Firebase:", error);
-                // Fallback to local storage
                 const globalStudents = JSON.parse(localStorage.getItem('students') || '[]');
                 students = globalStudents.map(s => ({
                     uid: s.id ? String(s.id) : 'N/A',
@@ -523,7 +523,6 @@
                 }));
             }
 
-            // Load from profile.html's storage dynamically
             const teacherProfile = JSON.parse(localStorage.getItem('teacherProfile')) || {};
             
             classConfig = {
@@ -545,9 +544,33 @@
                 classConfig.className = cls.name;
             }
 
-            // Kept reading from local storage so previous attendance inputs are not lost
-            attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
-            lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
+            // --- CLOUD SYNC: Fetch Attendance History from Firebase ---
+            if (currentUserId) {
+                try {
+                    const classDocRef = doc(db, "users", currentUserId, "data", "class_" + currentClassId);
+                    const classDocSnap = await getDoc(classDocRef);
+                    if (classDocSnap.exists()) {
+                        const cloudData = classDocSnap.data();
+                        if (cloudData.attendanceHistory) attendanceHistory = cloudData.attendanceHistory;
+                        if (cloudData.lockedDates) lockedDates = cloudData.lockedDates;
+                        
+                        // Keep local storage in sync as fallback
+                        localStorage.setItem(getKey('attendance_history'), JSON.stringify(attendanceHistory));
+                        localStorage.setItem(getKey('locked_dates'), JSON.stringify(lockedDates));
+                    } else {
+                        // Fallback to local if not in cloud yet
+                        attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
+                        lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
+                    }
+                } catch (e) {
+                    console.error("Error loading attendance from Firebase", e);
+                    attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
+                    lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
+                }
+            } else {
+                attendanceHistory = JSON.parse(localStorage.getItem(getKey('attendance_history'))) || {};
+                lockedDates = JSON.parse(localStorage.getItem(getKey('locked_dates'))) || [];
+            }
 
             seatingLayout = JSON.parse(localStorage.getItem(getKey('seatingLayout'))) || {};
             const seatConfig = JSON.parse(localStorage.getItem(getKey('seatingConfig'))) || {
@@ -557,6 +580,21 @@
             document.getElementById('inputCols').value = seatConfig.gridCols;
             if(seatConfig.seatsPerTable) document.getElementById('seatsPerTable').value = seatConfig.seatsPerTable;
             if(seatConfig.layout) document.getElementById('layoutSelect').value = seatConfig.layout;
+        }
+
+        // --- FIREBASE SYNC FUNCTION ---
+        async function syncToCloud() {
+            if (!currentUserId) return;
+            try {
+                const classDocRef = doc(db, "users", currentUserId, "data", "class_" + currentClassId);
+                await setDoc(classDocRef, {
+                    attendanceHistory: attendanceHistory,
+                    lockedDates: lockedDates,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error syncing to Cloud:", error);
+            }
         }
 
         // --- Class Management ---
@@ -571,7 +609,11 @@
         function changeClass(newId) {
             currentClassId = newId;
             localStorage.setItem('current_class_id', currentClassId);
-            initApp();
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "កំពុងប្តូរថ្នាក់...";
+            initApp().then(() => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            });
         }
 
         function createNewClass() {
@@ -584,7 +626,8 @@
                 localStorage.setItem('current_class_id', currentClassId);
                 
                 classConfig.className = name;
-                initApp();
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                initApp().then(() => document.getElementById('loadingOverlay').style.display = 'none');
             }
         }
 
@@ -596,7 +639,8 @@
                     classList[clsIdx].name = newName;
                     saveClassList();
                     classConfig.className = newName;
-                    initApp();
+                    document.getElementById('loadingOverlay').style.display = 'flex';
+                    initApp().then(() => document.getElementById('loadingOverlay').style.display = 'none');
                 }
             }
         }
@@ -650,11 +694,11 @@
                     btn.className = "mt-8 bg-gray-400 text-white px-8 py-4 rounded-xl w-full font-bold shadow flex items-center justify-center gap-2 text-lg cursor-not-allowed";
                     btn.disabled = true;
                 } else if (isLocked) {
-                    btn.innerHTML = '<i data-lucide="lock" class="w-5 h-5"></i> ទិន្នន័យថ្ងៃនេះត្រូវបានចាក់សោ';
+                    btn.innerHTML = '<i data-lucide="lock" class="w-5 h-5"></i> ទិន្នន័យថ្ងៃនេះត្រូវបានចាក់សោ (Cloud Saved)';
                     btn.className = "mt-8 bg-gray-400 text-white px-8 py-4 rounded-xl w-full font-bold shadow flex items-center justify-center gap-2 text-lg cursor-not-allowed";
                     btn.disabled = true;
                 } else {
-                    btn.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានថ្ងៃនេះ';
+                    btn.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i> រក្សាទុកវត្តមានទៅ Cloud';
                     btn.className = "mt-8 bg-[#0054a6] text-white px-8 py-4 rounded-xl w-full font-bold shadow-lg hover:bg-blue-800 transition flex items-center justify-center gap-2 text-lg";
                     btn.disabled = false;
                 }
@@ -728,10 +772,12 @@
             attendanceHistory[date][uid] = { status: status, note: note };
             
             localStorage.setItem(getKey('attendance_history'), JSON.stringify(attendanceHistory));
-            loadAttendance(); // This will re-render both List and Map grids ensuring sync
+            loadAttendance(); // Re-render instantly
+            
+            syncToCloud(); // Sync in background
         }
 
-        function saveAttendance() { 
+        async function saveAttendance() { 
             if(students.length === 0) return alert('មិនមានសិស្សសម្រាប់រក្សាទុកទេ!');
             
             const date = document.getElementById('attendance_date').value;
@@ -741,7 +787,10 @@
             }
             if (lockedDates.includes(date)) return;
 
-            if (!confirm('តើអ្នកពិតជាចង់រក្សាទុកវត្តមានថ្ងៃនេះមែនទេ? បន្ទាប់ពីររក្សាទុករួច ទិន្នន័យនឹងត្រូវបានចាក់សោ (មិនអាចកែប្រែបាន)។')) return;
+            if (!confirm('តើអ្នកពិតជាចង់រក្សាទុកវត្តមានថ្ងៃនេះទៅ Cloud មែនទេ? បន្ទាប់ពីររក្សាទុករួច ទិន្នន័យនឹងត្រូវបានចាក់សោ (មិនអាចកែប្រែបាន)។')) return;
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "កំពុងរក្សាទុកទៅកាន់ Cloud...";
 
             if(!attendanceHistory[date]) attendanceHistory[date] = {};
             students.forEach(s => {
@@ -754,6 +803,9 @@
             lockedDates.push(date);
             localStorage.setItem(getKey('locked_dates'), JSON.stringify(lockedDates));
 
+            await syncToCloud(); // Wait for sync to finish
+
+            document.getElementById('loadingOverlay').style.display = 'none';
             loadAttendance();
             
             const toast = document.createElement('div');
@@ -764,11 +816,18 @@
             setTimeout(() => toast.remove(), 2500);
         }
 
-        function unlockAttendance() {
+        async function unlockAttendance() {
             const date = document.getElementById('attendance_date').value;
-            if(confirm('តើអ្នកពិតជាចង់ដោះសោទិន្នន័យថ្ងៃនេះ ដើម្បីអាចកែប្រែឡើងវិញមែនទេ?')) {
+            if(confirm('តើអ្នកពិតជាចង់ដោះសោទិន្នន័យថ្ងៃនេះ ដើម្បីអាចកែប្រែឡើងវិញមែនទេ? ទិន្នន័យលើ Cloud ក៏នឹងត្រូវដោះសោដែរ។')) {
                 lockedDates = lockedDates.filter(d => d !== date);
                 localStorage.setItem(getKey('locked_dates'), JSON.stringify(lockedDates));
+                
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                document.getElementById('loadingText').innerText = "កំពុងធ្វើបច្ចុប្បន្នភាពលើ Cloud...";
+                
+                await syncToCloud(); // Update Cloud status
+                
+                document.getElementById('loadingOverlay').style.display = 'none';
                 loadAttendance();
             }
         }
@@ -791,7 +850,6 @@
                 seatsPerTableDropdown.classList.remove('opacity-50', 'cursor-not-allowed');
             }
 
-            // Cleanup orphaned seats if structure shrunk
             for (const seatId in seatingLayout) {
                 const parts = seatId.match(/t(\d+)-s(\d+)/);
                 if (parts) {
@@ -981,7 +1039,6 @@
             const flow = { 'P': 'L', 'L': 'A', 'A': 'P' };
             const nextStatus = flow[current];
             
-            // This syncs to the main history and handles notes
             mark(studentId, nextStatus); 
         }
 

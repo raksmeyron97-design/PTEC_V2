@@ -79,7 +79,7 @@
                     </div>
                     <div>
                         <h1 class="text-xl md:text-2xl kh-moul text-indigo-900">បញ្ចូលពិន្ទុកិច្ចការផ្ទះ</h1>
-                        <p class="text-slate-500 font-medium text-xs md:text-sm">Homework Score Entry</p>
+                        <p class="text-slate-500 font-medium text-xs md:text-sm">Homework Score Entry (Online Data)</p>
                     </div>
                 </div>
 
@@ -160,13 +160,32 @@
             <div class="p-3 bg-white border-t border-slate-200 flex justify-between items-center text-sm text-slate-500 shrink-0">
                 <span id="studentCount" class="font-bold text-[#0054a6]">Loading...</span>
                 <span class="italic text-xs bg-slate-100 px-2 py-1 rounded flex items-center gap-1">
-                    <i data-lucide="check-circle-2" class="w-3 h-3 text-green-500"></i> Auto-Save Ready
+                    <i data-lucide="cloud-check" class="w-3 h-3 text-blue-500"></i> Cloud Sync Ready
                 </span>
             </div>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         // Data Structure Maps
         const allMonthsMap = [
             { id: 'nov', label: 'វិច្ឆិកា', isNextYear: false },
@@ -363,8 +382,10 @@
             return `hw_scores_v2_${year}_${month}`;
         }
 
-        // Load Students and Scores
-        function loadData() {
+        // Load Students and Scores Online From Firebase
+        async function loadData() {
+            // Keeping Students offline if they are managed on another page, 
+            // otherwise you can transition this to Firebase easily.
             try { students = JSON.parse(localStorage.getItem('students') || '[]'); } 
             catch (e) { students = []; }
 
@@ -372,22 +393,33 @@
             const oldStorageKey = `hw_scores_${document.getElementById('yearSelect').value}_${document.getElementById('monthSelect').value}`;
             
             try {
-                let data = JSON.parse(localStorage.getItem(storageKey));
-                if (data) {
-                    hwScores = data;
+                // Fetch from Firebase Firestore
+                const docRef = doc(db, "homework_scores", storageKey);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists() && docSnap.data().scores) {
+                    hwScores = docSnap.data().scores;
                 } else {
-                    let oldData = JSON.parse(localStorage.getItem(oldStorageKey));
-                    if (oldData) {
-                        hwScores = {};
-                        for (let sid in oldData) {
-                            hwScores[sid] = { days: {}, total: oldData[sid] };
-                        }
+                    // Fallback to local storage (for easy transition without losing data)
+                    let data = JSON.parse(localStorage.getItem(storageKey));
+                    if (data) {
+                        hwScores = data;
                     } else {
-                        hwScores = {};
+                        let oldData = JSON.parse(localStorage.getItem(oldStorageKey));
+                        if (oldData) {
+                            hwScores = {};
+                            for (let sid in oldData) {
+                                hwScores[sid] = { days: {}, total: oldData[sid] };
+                            }
+                        } else {
+                            hwScores = {};
+                        }
                     }
                 }
             } catch (e) {
-                hwScores = {};
+                console.error("Error loading from Firebase:", e);
+                // Last resort fallback
+                hwScores = JSON.parse(localStorage.getItem(storageKey)) || {};
             }
 
             renderTable();
@@ -512,7 +544,7 @@
                             <input type="number" 
                                 class="w-full text-center ${inputSize} px-0.5 border border-transparent hover:border-slate-300 rounded outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 font-bold text-slate-700 bg-transparent transition-all" 
                                 value="${val}"
-                                oninput="updateDayScore('${s.id}', ${col.dayNum}, this.value)"
+                                oninput="window.updateDayScore('${s.id}', ${col.dayNum}, this.value)"
                                 min="0" step="0.5">
                         </td>
                         `;
@@ -562,8 +594,8 @@
             }
         }
 
-        // Save scores to LocalStorage
-        function saveScores() {
+        // Save scores to Firebase Firestore
+        async function saveScores() {
             const btnText = document.getElementById('saveBtnText');
             const originalText = btnText.innerText;
             const btn = btnText.closest('button');
@@ -572,11 +604,16 @@
             btn.classList.replace('bg-[#0054a6]', 'bg-indigo-500');
             btn.classList.replace('hover:bg-[#1e40af]', 'hover:bg-indigo-600');
 
-            // Save Detailed Data
             const storageKey = getStorageKey();
-            localStorage.setItem(storageKey, JSON.stringify(hwScores));
 
-            setTimeout(() => {
+            try {
+                // Online Storage execution
+                const docRef = doc(db, "homework_scores", storageKey);
+                await setDoc(docRef, { scores: hwScores }, { merge: true });
+                
+                // Keep local backup to enable offline robustness/fast load
+                localStorage.setItem(storageKey, JSON.stringify(hwScores));
+
                 btnText.innerText = 'រួចរាល់!';
                 btn.classList.replace('bg-indigo-500', 'bg-emerald-600');
                 btn.classList.replace('hover:bg-indigo-600', 'hover:bg-emerald-700');
@@ -586,8 +623,29 @@
                     btn.classList.replace('bg-emerald-600', 'bg-[#0054a6]');
                     btn.classList.replace('hover:bg-emerald-700', 'hover:bg-[#1e40af]');
                 }, 1500);
-            }, 400);
+            } catch(error) {
+                console.error("Firebase Error: ", error);
+                
+                btnText.innerText = 'បរាជ័យ!';
+                btn.classList.replace('bg-indigo-500', 'bg-red-500');
+                btn.classList.replace('hover:bg-indigo-600', 'hover:bg-red-600');
+                
+                setTimeout(() => {
+                    btnText.innerText = originalText;
+                    btn.classList.replace('bg-red-500', 'bg-[#0054a6]');
+                    btn.classList.replace('hover:bg-red-600', 'hover:bg-[#1e40af]');
+                }, 1500);
+            }
         }
+
+        // Expose functions to the window object for inline HTML event handlers (since this is now a JS module)
+        window.renderTable = renderTable;
+        window.updateDayOptions = updateDayOptions;
+        window.updateMonthOptions = updateMonthOptions;
+        window.loadData = loadData;
+        window.switchTab = switchTab;
+        window.saveScores = saveScores;
+        window.updateDayScore = updateDayScore;
     </script>
 </body>
 </html>
