@@ -62,6 +62,19 @@
         }
         .input-field:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.1); }
 
+        /* Loading Overlay */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            backdrop-filter: blur(4px);
+        }
+
         /* Honor Roll Print Styles - A4 Portrait */
         .print-container {
             display: none;
@@ -207,6 +220,12 @@
 <body>
 
     <div class="bg-animate no-print"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="no-print">
+        <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-[#0054a6] mb-2"></i>
+        <p class="font-bold text-slate-600">កំពុងគណនា និងទាញយកទិន្នន័យ...</p>
+    </div>
 
     <!-- Selection Screen -->
     <div id="selectionScreen" class="min-h-screen flex flex-col pt-8 px-4 no-print relative">
@@ -407,7 +426,32 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase Script and Core Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
+            authDomain: "classroom-management-82382.firebaseapp.com",
+            projectId: "classroom-management-82382",
+            storageBucket: "classroom-management-82382.firebasestorage.app",
+            messagingSenderId: "146641865620",
+            appId: "1:146641865620:web:ce693b7b064afd5d1bdd81",
+            measurementId: "G-PX867PB723"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const analytics = getAnalytics(app);
+
+        const PTEC_APP_ID = "ptec-app";
+        let currentUser = null;
+
         // --- 1. CONFIGURATION ---
         const monthlySubjects = [
             { key: 'kh_listen' }, { key: 'kh_write' }, { key: 'kh_read' }, { key: 'kh_speak' },
@@ -443,13 +487,49 @@
         // --- 2. INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            loadClassConfig();
-            updateMonthOptions();
+            window.updateMonthOptions();
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await loadClassConfig();
+                } else {
+                    try {
+                        await signInAnonymously(auth);
+                        await loadClassConfig();
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        await loadClassConfig();
+                    }
+                }
+            });
         });
 
-        function loadClassConfig() {
-            // Load Class config completely from the Global Profile stored via profile.html
-            const profile = JSON.parse(localStorage.getItem('teacherProfile') || '{}');
+        function showLoading(show) {
+            const el = document.getElementById('loadingOverlay');
+            if (el) el.style.display = show ? 'flex' : 'none';
+        }
+
+        async function loadClassConfig() {
+            let profile = {};
+            
+            if (currentUser) {
+                try {
+                    // Fetch profile info directly from Firestore instead of localStorage
+                    const profileRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'profile', 'data');
+                    const profileSnap = await getDoc(profileRef);
+                    if (profileSnap.exists()) {
+                        profile = profileSnap.data();
+                    }
+                } catch (error) {
+                    console.error("Error loading profile data:", error);
+                }
+            }
+
+            // Fallback to local storage if cloud is empty or offline
+            if (Object.keys(profile).length === 0) {
+                profile = JSON.parse(localStorage.getItem('teacherProfile') || '{}');
+            }
             
             classConfig = {
                 org1: profile.management_unit_1 || "មន្ទីរអប់រំ យុវជន និងកីឡា", 
@@ -500,9 +580,8 @@
             }
         }
 
-        // --- SETTINGS MODAL LOGIC ---
-        function openSettingsModal() {
-            // Design Info Only
+        // --- WINDOW EXPORTS FOR HTML ---
+        window.openSettingsModal = function() {
             document.getElementById('design_bg').value = designConfig.bgPattern || 'stardust';
             document.getElementById('design_frame').value = designConfig.frameStyle || 'corners';
             document.getElementById('design_text_color').value = designConfig.textColor || '#0054a6';
@@ -511,12 +590,11 @@
             document.getElementById('settingsModal').classList.remove('hidden');
         }
 
-        function closeSettingsModal() {
+        window.closeSettingsModal = function() {
             document.getElementById('settingsModal').classList.add('hidden');
         }
 
-        function saveSettings() {
-            // Save Design Config Only
+        window.saveSettings = function() {
             designConfig = {
                 bgPattern: document.getElementById('design_bg').value,
                 frameStyle: document.getElementById('design_frame').value,
@@ -526,10 +604,10 @@
             localStorage.setItem('honorRollDesign', JSON.stringify(designConfig));
 
             applyDesign();
-            closeSettingsModal();
+            window.closeSettingsModal();
         }
 
-        function setType(type) {
+        window.setType = function(type) {
             currentType = type;
             const btnMonthly = document.getElementById('btnMonthly');
             const btnSemester = document.getElementById('btnSemester');
@@ -549,22 +627,22 @@
                 btnMonthly.classList.remove('text-gray-500', 'hover:bg-white/50');
                 periodInputGroup.style.display = 'block';
                 label.innerText = 'ជ្រើសរើសខែ';
-                updateMonthOptions();
+                window.updateMonthOptions();
             } else if (type === 'semester') {
                 btnSemester.classList.add('bg-white', 'shadow', 'text-[#0054a6]');
                 btnSemester.classList.remove('text-gray-500', 'hover:bg-white/50');
                 periodInputGroup.style.display = 'block';
                 label.innerText = 'ជ្រើសរើសឆមាស';
-                updateMonthOptions();
+                window.updateMonthOptions();
             } else if (type === 'yearly') {
                 btnYearly.classList.add('bg-white', 'shadow', 'text-[#0054a6]');
                 btnYearly.classList.remove('text-gray-500', 'hover:bg-white/50');
-                periodInputGroup.style.display = 'none'; // Hide period selection
+                periodInputGroup.style.display = 'none'; 
             }
         }
 
-        function updateMonthOptions() {
-            if (currentType === 'yearly') return; // Skip updating options for yearly
+        window.updateMonthOptions = function() {
+            if (currentType === 'yearly') return; 
             
             const yearVal = document.getElementById('yearSelect').value;
             if (!yearVal || !yearVal.includes('-')) return;
@@ -617,7 +695,6 @@
             return 'F';
         }
 
-        // Helper function for calculation logic
         function calculateAverageFromData(sScores, type) {
             const columns = type === 'semester' ? semesterSubjects : monthlySubjects;
             let sum = 0;
@@ -639,136 +716,174 @@
         }
 
         // --- 4. GENERATE HONOR ROLL ---
-        function generateHonorRoll() {
-            const year = document.getElementById('yearSelect').value;
-            const period = document.getElementById('periodSelect').value;
-            
-            const storedStudents = localStorage.getItem('students');
-            if (!storedStudents) {
-                alert("មិនមានទិន្នន័យសិស្សទេ!");
-                return;
-            }
-
-            let allStudents = JSON.parse(storedStudents);
-
-            // Fetch the required scores from LocalStorage based on type
-            let scoresDataCurrent = {};
-            let scoresDataSem1 = {};
-            let scoresDataSem2 = {};
-
-            if (currentType === 'yearly') {
-                scoresDataSem1 = JSON.parse(localStorage.getItem(`scores_${year}_sem1`) || '{}');
-                scoresDataSem2 = JSON.parse(localStorage.getItem(`scores_${year}_sem2`) || '{}');
-            } else {
-                scoresDataCurrent = JSON.parse(localStorage.getItem(`scores_${year}_${period}`) || '{}');
-            }
-
-            // Calculate Averages
-            let rankedStudents = allStudents.map(s => {
-                let avg = 0;
-
-                if (currentType === 'yearly') {
-                    // Combine Sem1 and Sem2 for Yearly Average
-                    const sem1Avg = calculateAverageFromData(scoresDataSem1[s.id] || {}, 'semester');
-                    const sem2Avg = calculateAverageFromData(scoresDataSem2[s.id] || {}, 'semester');
-                    avg = (sem1Avg > 0 || sem2Avg > 0) ? ((sem1Avg + sem2Avg) / 2) : 0;
-                } else {
-                    // Compute Monthly or Semester normally
-                    avg = calculateAverageFromData(scoresDataCurrent[s.id] || {}, currentType);
+        window.generateHonorRoll = async function() {
+            showLoading(true);
+            try {
+                const year = document.getElementById('yearSelect').value;
+                const period = document.getElementById('periodSelect').value;
+                
+                // 1. Fetch Students
+                let allStudents = [];
+                if (currentUser) {
+                    const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
+                    const studentsSnap = await getDocs(studentsRef);
+                    studentsSnap.forEach(doc => allStudents.push({ id: doc.id, ...doc.data() }));
                 }
 
-                return {
-                    ...s,
-                    average: avg,
-                    grade: calculateGrade(avg)
+                if (allStudents.length === 0) {
+                    const storedStudents = localStorage.getItem('students_db') || localStorage.getItem('students');
+                    if (storedStudents) allStudents = JSON.parse(storedStudents);
+                }
+
+                if (allStudents.length === 0) {
+                    alert("មិនមានទិន្នន័យសិស្សទេ!");
+                    showLoading(false);
+                    return;
+                }
+
+                // 2. Fetch Scores Helper
+                const fetchScores = async (docId) => {
+                    let data = {};
+                    if (currentUser) {
+                        const sRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                        const sSnap = await getDoc(sRef);
+                        if (sSnap.exists()) {
+                            data = sSnap.data();
+                        } else {
+                            const oldSnap = await getDoc(doc(db, "scores", docId)).catch(()=>null);
+                            if (oldSnap && oldSnap.exists()) data = oldSnap.data();
+                        }
+                    }
+                    if (Object.keys(data).length === 0) {
+                        data = JSON.parse(localStorage.getItem(`scores_${docId}`) || '{}');
+                    }
+                    return data;
                 };
-            });
 
-            // Sort by Average DESC
-            rankedStudents.sort((a, b) => b.average - a.average);
+                let scoresDataCurrent = {};
+                let scoresDataSem1 = {};
+                let scoresDataSem2 = {};
 
-            // Get Top 5
-            const top5 = rankedStudents.slice(0, 5);
+                if (currentType === 'yearly') {
+                    scoresDataSem1 = await fetchScores(`${year}_sem1`);
+                    scoresDataSem2 = await fetchScores(`${year}_sem2`);
+                } else {
+                    scoresDataCurrent = await fetchScores(`${year}_${period}`);
+                }
 
-            if (top5.length === 0 || top5[0].average === 0) {
-                alert("មិនទាន់មានទិន្នន័យពិន្ទុគ្រប់គ្រាន់សម្រាប់គណនាចំណាត់ថ្នាក់ទេ។");
-                return;
-            }
+                // 3. Calculate Averages
+                let rankedStudents = allStudents.map(s => {
+                    let avg = 0;
 
-            // Populate Info
-            document.getElementById('print_org_1').textContent = classConfig.org1 || '';
-            document.getElementById('print_org_2').textContent = classConfig.org2 || '';
-            document.getElementById('print_school').textContent = classConfig.school || '';
-            document.getElementById('print_class').textContent = classConfig.className || '';
-            
-            let periodText = '';
-            if (currentType === 'yearly') {
-                periodText = 'ប្រចាំឆ្នាំ';
-            } else if (currentType === 'semester') {
-                periodText = `ប្រចាំ${monthLabels[period]}`;
-            } else {
-                periodText = `ប្រចាំខែ${monthLabels[period]}`;
-            }
+                    if (currentType === 'yearly') {
+                        // Combine Sem1 and Sem2 for Yearly Average
+                        const sem1Avg = calculateAverageFromData(scoresDataSem1[s.id] || {}, 'semester');
+                        const sem2Avg = calculateAverageFromData(scoresDataSem2[s.id] || {}, 'semester');
+                        avg = (sem1Avg > 0 || sem2Avg > 0) ? ((sem1Avg + sem2Avg) / 2) : 0;
+                    } else {
+                        // Compute Monthly or Semester normally
+                        avg = calculateAverageFromData(scoresDataCurrent[s.id] || {}, currentType);
+                    }
 
-            document.getElementById('out_period').textContent = periodText;
-            document.getElementById('out_class_title').textContent = classConfig.className || '';
-            
-            document.getElementById('out_manager').textContent = classConfig.managerRole || 'នាយកសាលា';
-            document.getElementById('out_teacher').textContent = classConfig.teacher || 'ឈ្មោះគ្រូ';
-            
-            // Generate Auto Date in Khmer
-            const today = new Date();
-            const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
-            const khDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
-            const toKh = num => num.toString().split('').map(d => khDigits[d] || d).join('');
-            
-            let lunarStr = "ថ្ងៃ................ខែ..........ឆ្នាំ..........ព.ស.២៥៦...";
-            if (typeof momentkh !== 'undefined') {
-                try {
-                    const khmerDateObj = momentkh.fromDate(today);
-                    lunarStr = momentkh.format(khmerDateObj).replace('ពុទ្ធសករាជ', 'ព.ស.');
-                } catch (e) { console.error("Error formatting khmer date", e); }
-            }
-            
-            document.getElementById('out_lunar_date').textContent = lunarStr;
-            document.getElementById('out_loc').textContent = classConfig.location || '....................';
-            document.getElementById('out_solar_date').textContent = `ថ្ងៃទី${toKh(today.getDate())} ខែ${khmerMonths[today.getMonth()]} ឆ្នាំ${toKh(today.getFullYear())}`;
+                    return {
+                        ...s,
+                        average: avg,
+                        grade: calculateGrade(avg)
+                    };
+                });
 
-            //
-            // Render Cards
-            const grid = document.getElementById('honorGrid');
-            grid.innerHTML = '';
+                // Sort by Average DESC
+                rankedStudents.sort((a, b) => b.average - a.average);
 
-            const positionClasses = ['pos-1', 'pos-2', 'pos-3', 'pos-4', 'pos-5'];
+                // Get Top 5
+                const top5 = rankedStudents.slice(0, 5);
 
-            top5.forEach((student, index) => {
-                const photoUrl = student.photo || `https://api.dicebear.com/7.x/notionists/svg?seed=${student.id}`;
+                if (top5.length === 0 || top5[0].average === 0) {
+                    alert("មិនទាន់មានទិន្នន័យពិន្ទុគ្រប់គ្រាន់សម្រាប់គណនាចំណាត់ថ្នាក់ទេ។");
+                    showLoading(false);
+                    return;
+                }
+
+                // Populate Info
+                document.getElementById('print_org_1').textContent = classConfig.org1 || '';
+                document.getElementById('print_org_2').textContent = classConfig.org2 || '';
+                document.getElementById('print_school').textContent = classConfig.school || '';
+                document.getElementById('print_class').textContent = classConfig.className || '';
                 
-                const card = document.createElement('div');
-                card.className = `student-card ${positionClasses[index]}`;
-                
-                card.innerHTML = `
-                    <div class="card-header-bg"></div>
-                    <div class="rank-badge">${index + 1}</div>
-                    <img src="${photoUrl}" class="student-photo" onerror="this.src='https://api.dicebear.com/7.x/notionists/svg?seed=error'">
-                    <div class="z-10 flex flex-col items-center mt-2 w-full px-2">
-                        <h4 class="student-name w-full truncate text-center" title="${student.name}">${student.name}</h4>
-                        <p class="text-[11px] text-gray-500 font-bold mb-1">មធ្យមភាគ: <span class="student-avg">${formatNum(student.average)}</span></p>
-                        <p class="student-grade">${student.grade}</p>
-                    </div>
-                `;
-                
-                grid.appendChild(card);
-            });
+                let periodText = '';
+                if (currentType === 'yearly') {
+                    periodText = 'ប្រចាំឆ្នាំ';
+                } else if (currentType === 'semester') {
+                    periodText = `ប្រចាំ${monthLabels[period]}`;
+                } else {
+                    periodText = `ប្រចាំខែ${monthLabels[period]}`;
+                }
 
-            // Show Preview
-            document.getElementById('selectionScreen').classList.add('hidden');
-            const printWrapper = document.getElementById('printAreaWrapper');
-            printWrapper.classList.remove('hidden');
-            document.body.classList.add('preview-mode');
+                document.getElementById('out_period').textContent = periodText;
+                document.getElementById('out_class_title').textContent = classConfig.className || '';
+                
+                document.getElementById('out_manager').textContent = classConfig.managerRole || 'នាយកសាលា';
+                document.getElementById('out_teacher').textContent = classConfig.teacher || 'ឈ្មោះគ្រូ';
+                
+                // Generate Auto Date in Khmer
+                const today = new Date();
+                const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+                const khDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+                const toKh = num => num.toString().split('').map(d => khDigits[d] || d).join('');
+                
+                let lunarStr = "ថ្ងៃ................ខែ..........ឆ្នាំ..........ព.ស.២៥៦...";
+                if (typeof momentkh !== 'undefined') {
+                    try {
+                        const khmerDateObj = momentkh.fromDate(today);
+                        lunarStr = momentkh.format(khmerDateObj).replace('ពុទ្ធសករាជ', 'ព.ស.');
+                    } catch (e) { console.error("Error formatting khmer date", e); }
+                }
+                
+                document.getElementById('out_lunar_date').textContent = lunarStr;
+                document.getElementById('out_loc').textContent = classConfig.location || '....................';
+                document.getElementById('out_solar_date').textContent = `ថ្ងៃទី${toKh(today.getDate())} ខែ${khmerMonths[today.getMonth()]} ឆ្នាំ${toKh(today.getFullYear())}`;
+
+                // 4. Render Cards
+                const grid = document.getElementById('honorGrid');
+                grid.innerHTML = '';
+
+                const positionClasses = ['pos-1', 'pos-2', 'pos-3', 'pos-4', 'pos-5'];
+
+                top5.forEach((student, index) => {
+                    const photoUrl = student.photo || `https://api.dicebear.com/7.x/notionists/svg?seed=${student.id}`;
+                    
+                    const card = document.createElement('div');
+                    card.className = `student-card ${positionClasses[index]}`;
+                    
+                    card.innerHTML = `
+                        <div class="card-header-bg"></div>
+                        <div class="rank-badge">${index + 1}</div>
+                        <img src="${photoUrl}" class="student-photo" onerror="this.src='https://api.dicebear.com/7.x/notionists/svg?seed=error'">
+                        <div class="z-10 flex flex-col items-center mt-2 w-full px-2">
+                            <h4 class="student-name w-full truncate text-center" title="${student.name}">${student.name}</h4>
+                            <p class="text-[11px] text-gray-500 font-bold mb-1">មធ្យមភាគ: <span class="student-avg">${formatNum(student.average)}</span></p>
+                            <p class="student-grade">${student.grade}</p>
+                        </div>
+                    `;
+                    
+                    grid.appendChild(card);
+                });
+
+                // Show Preview
+                document.getElementById('selectionScreen').classList.add('hidden');
+                const printWrapper = document.getElementById('printAreaWrapper');
+                printWrapper.classList.remove('hidden');
+                document.body.classList.add('preview-mode');
+
+            } catch (err) {
+                console.error(err);
+                alert('មានបញ្ហាក្នុងការទាញយកទិន្នន័យពី Cloud។ សូមព្យាយាមម្ដងទៀត។');
+            } finally {
+                showLoading(false);
+            }
         }
 
-        function closePreview() {
+        window.closePreview = function() {
             document.getElementById('selectionScreen').classList.remove('hidden');
             document.getElementById('printAreaWrapper').classList.add('hidden');
             document.body.classList.remove('preview-mode');
