@@ -320,8 +320,10 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBU50HJrekgHWwwyLq5CTRwhjHkGJAAAfs",
@@ -334,7 +336,12 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const analytics = getAnalytics(app);
+
+        const PTEC_APP_ID = "ptec-app";
+        let currentUser = null;
 
         // --- DATA ---
         const monthlyOptionsHTML = `
@@ -483,15 +490,29 @@
         let currentMode = 'monthly';
 
         // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('subjectSelect').innerHTML = monthlyOptionsHTML;
             document.getElementById('subjectSelect').value = "math_general"; 
             updateMonthOptions(); 
             lucide.createIcons();
 
-            // Load Students (Async)
-            await loadStudents();
-            await loadScoresForCurrentPeriod();
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await loadStudents();
+                    await loadScoresForCurrentPeriod();
+                } else {
+                    try {
+                        // បង្កើត Anonymous Session ដើម្បីអនុញ្ញាតឱ្យ Save ចូល Firebase បាន
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        // បើ Offline ទាញចេញពី Local ធម្មតា
+                        await loadStudents();
+                        await loadScoresForCurrentPeriod();
+                    }
+                }
+            });
         });
 
         function updateMonthOptions() {
@@ -553,12 +574,14 @@
         async function loadStudents() {
             showLoading(true);
             try {
-                // Try fetching from Firebase first
-                const querySnapshot = await getDocs(collection(db, "students"));
                 let onlineStudents = [];
-                querySnapshot.forEach((doc) => {
-                    onlineStudents.push({ id: doc.id, ...doc.data() });
-                });
+                if (currentUser) {
+                    const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
+                    const querySnapshot = await getDocs(studentsRef);
+                    querySnapshot.forEach((doc) => {
+                        onlineStudents.push({ id: doc.id, ...doc.data() });
+                    });
+                }
 
                 if (onlineStudents.length > 0) {
                     students = onlineStudents;
@@ -566,13 +589,13 @@
                 } else {
                     // Fallback to LocalStorage if Firebase is empty (for migration)
                     console.log("Firebase empty, checking localStorage...");
-                    const storedStudents = localStorage.getItem('students');
+                    const storedStudents = localStorage.getItem('students_db') || localStorage.getItem('students');
                     students = storedStudents ? JSON.parse(storedStudents) : [];
                 }
             } catch (e) {
                 console.error("Error loading students:", e);
                 // Fallback on error
-                const storedStudents = localStorage.getItem('students');
+                const storedStudents = localStorage.getItem('students_db') || localStorage.getItem('students');
                 students = storedStudents ? JSON.parse(storedStudents) : [];
             } finally {
                 showLoading(false);
@@ -595,18 +618,27 @@
             const docId = getStorageKey();
             
             try {
-                const docRef = doc(db, "scores", docId);
-                const docSnap = await getDoc(docRef);
+                let docSnap = null;
+                if (currentUser) {
+                    const docRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                    docSnap = await getDoc(docRef);
+                    
+                    if (!docSnap.exists()) {
+                        const oldSnap = await getDoc(doc(db, "scores", docId)).catch(() => null);
+                        if (oldSnap && oldSnap.exists()) scoresData = oldSnap.data();
+                    }
+                }
 
-                if (docSnap.exists()) {
+                if (docSnap && docSnap.exists()) {
                     scoresData = docSnap.data();
-                } else {
-                    scoresData = {};
-                    console.log("No scores found for this period in Cloud");
+                } else if (Object.keys(scoresData || {}).length === 0) {
+                    const localScores = localStorage.getItem(`scores_${docId}`);
+                    scoresData = localScores ? JSON.parse(localScores) : {};
                 }
             } catch (error) {
                 console.error("Error getting scores:", error);
-                scoresData = {};
+                const localScores = localStorage.getItem(`scores_${docId}`);
+                scoresData = localScores ? JSON.parse(localScores) : {};
             } finally {
                 showLoading(false);
                 updateTableStructure();
@@ -739,8 +771,14 @@
             const docId = getStorageKey();
 
             try {
-                // Save to Firestore (merge: true keeps existing data in the document)
-                await setDoc(doc(db, "scores", docId), scoresData, { merge: true });
+                if (currentUser) {
+                    const docRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                    // Save to Firestore (merge: true keeps existing data in the document)
+                    await setDoc(docRef, scoresData, { merge: true });
+                }
+                
+                // រក្សាទុកបម្រុងទុកក្នុង LocalStorage (Backup)
+                localStorage.setItem(`scores_${docId}`, JSON.stringify(scoresData));
 
                 setTimeout(() => {
                     btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> រួចរាល់!';
