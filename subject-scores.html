@@ -118,7 +118,7 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(4px);">
         <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-[#0054a6] mb-2"></i>
-        <p class="font-bold text-slate-600">កំពុងទាញយកទិន្នន័យ...</p>
+        <p class="font-bold text-slate-600">កំពុងទាញយកទិន្នន័យពី Cloud...</p>
     </div>
 
     <!-- Main Container -->
@@ -130,8 +130,8 @@
             <!-- Top Row: Title & Actions -->
             <div class="flex flex-col lg:flex-row justify-between items-center gap-4">
                 <div class="flex items-center gap-4 w-full lg:w-auto">
-                    <a href="enter-monthly-score.html" class="bg-blue-50 p-3 rounded-xl hover:bg-blue-100 text-blue-600 transition flex items-center gap-2">
-                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    <a href="index.html" class="bg-blue-50 p-3 rounded-xl hover:bg-blue-100 text-blue-600 transition flex items-center gap-2">
+                        <i data-lucide="home" class="w-5 h-5"></i>
                     </a>
                     <div class="bg-blue-600 p-3 rounded-xl shadow-lg shadow-blue-200 text-white">
                         <i data-lucide="table-2" class="w-6 h-6"></i>
@@ -224,7 +224,7 @@
             <!-- Footer Stats -->
             <div class="p-3 bg-white border-t border-slate-200 flex justify-between items-center text-sm text-slate-500">
                 <span id="studentCount" class="font-bold text-[#0054a6]">Loading...</span>
-                <span class="italic text-xs bg-slate-100 px-2 py-1 rounded flex items-center gap-1">
+                <span class="italic text-xs bg-slate-100 px-2 py-1 rounded flex items-center gap-1" id="cloudStatus">
                     <i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Cloud Connected
                 </span>
             </div>
@@ -345,7 +345,8 @@
     <!-- Firebase Script and Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -361,6 +362,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const analytics = getAnalytics(app);
 
         const PTEC_APP_ID = "ptec-app";
         let currentUser = null;
@@ -725,7 +727,6 @@
         }
 
         window.loadData = async function() {
-            if (!currentUser) return;
             showLoading(true);
             updateMonthCountBadge();
             const conf = config[currentMode];
@@ -733,29 +734,56 @@
             renderTableHeader(conf);
 
             try {
-                // Load Students from Firestore properly
-                const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
-                const studentsSnap = await getDocs(studentsRef);
+                // ១. ទាញយកឈ្មោះសិស្ស
                 let loadedStudents = [];
-                studentsSnap.forEach(doc => {
-                    loadedStudents.push({ id: doc.id, ...doc.data() });
-                });
+                if (currentUser) {
+                    const studentsRef = collection(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'students');
+                    const studentsSnap = await getDocs(studentsRef);
+                    studentsSnap.forEach(doc => {
+                        loadedStudents.push({ id: doc.id, ...doc.data() });
+                    });
+                }
                 
-                // Load Scores for current period
+                // Fallback local ពេលគ្មានសិស្ស
+                if (loadedStudents.length === 0) {
+                    const studentsRaw = localStorage.getItem('students_db') || localStorage.getItem('students');
+                    if (studentsRaw) loadedStudents = JSON.parse(studentsRaw);
+                }
+
+                // ២. ទាញយកពិន្ទុសម្រាប់ខែ ឬឆមាសដែលជ្រើសរើស
+                let parsedScores = {};
                 const docId = getStorageKey();
-                const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
-                const scoresSnap = await getDoc(scoresRef);
-                const parsedScores = scoresSnap.exists() ? scoresSnap.data() : {};
                 
-                // Load monthly caches if semester mode
+                if (currentUser) {
+                    const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                    const scoresSnap = await getDoc(scoresRef);
+                    parsedScores = scoresSnap.exists() ? scoresSnap.data() : {};
+                    
+                    if (!scoresSnap.exists()) {
+                        const oldSnap = await getDoc(doc(db, "scores", docId)).catch(() => null);
+                        if (oldSnap && oldSnap.exists()) parsedScores = oldSnap.data();
+                    }
+                }
+                
+                // Fallback local
+                if (Object.keys(parsedScores).length === 0) {
+                    const localScores = localStorage.getItem(`scores_${docId}`);
+                    if (localScores) parsedScores = JSON.parse(localScores);
+                }
+                
+                // ៣. ទាញយកពិន្ទុខែចាស់ៗ បើសិនជាស្ថិតក្នុងឆមាស
                 allMonthsScoresCache = {};
-                const year = document.getElementById('yearSelect').value;
                 if (currentMode === 'semester') {
+                    const year = document.getElementById('yearSelect').value;
                     for (const month of selectedSemesterMonths) {
                         const mDocId = `${year}_${month}`;
-                        const mRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', mDocId);
-                        const mSnap = await getDoc(mRef);
-                        allMonthsScoresCache[month] = mSnap.exists() ? mSnap.data() : {};
+                        let mData = {};
+                        if (currentUser) {
+                            const mRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', mDocId);
+                            const mSnap = await getDoc(mRef);
+                            mData = mSnap.exists() ? mSnap.data() : {};
+                        }
+                        allMonthsScoresCache[month] = mData;
                     }
                 }
 
@@ -779,7 +807,8 @@
 
             } catch (error) {
                 console.error("Error loading data:", error);
-                alert("មិនអាចទាញយកទិន្នន័យពី Cloud បានទេ។ សូមពិនិត្យអ៊ីនធឺណិត។");
+                document.getElementById('cloudStatus').innerHTML = '<i data-lucide="wifi-off" class="w-3 h-3 text-red-500"></i> Offline Mode';
+                lucide.createIcons();
             } finally {
                 showLoading(false);
             }
@@ -821,7 +850,6 @@
         }
 
         window.saveScores = async function() {
-            if (!currentUser) return;
             const btn = document.querySelector('button[onclick="saveScores()"]');
             const originalHTML = btn.innerHTML;
             
@@ -833,8 +861,13 @@
             const docId = getStorageKey();
 
             try {
-                const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
-                await setDoc(scoresRef, scoresToSave, { merge: true });
+                if (currentUser) {
+                    const scoresRef = doc(db, 'artifacts', PTEC_APP_ID, 'users', currentUser.uid, 'scores', docId);
+                    await setDoc(scoresRef, scoresToSave, { merge: true });
+                }
+                
+                // រក្សាទុកបម្រុងទុកក្នុង LocalStorage (Backup)
+                localStorage.setItem(`scores_${docId}`, JSON.stringify(scoresToSave));
                 
                 setTimeout(() => {
                     btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> រួចរាល់!';
@@ -898,7 +931,7 @@
             });
         }
 
-        // --- EXCEL EXPORT (Same as before) ---
+        // --- EXCEL EXPORT ---
         window.executeExcelExport = function() {
             const btn = document.getElementById('finalExportBtn');
             const originalText = btn.innerHTML;
@@ -1168,7 +1201,14 @@
                     currentUser = user;
                     await window.loadData();
                 } else {
-                    console.error("No user logged in");
+                    try {
+                        // បង្កើត Anonymous Session ដើម្បីអនុញ្ញាតឱ្យ Save ចូល Firebase បាន
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        // បើ Offline ទាញចេញពី Local ធម្មតា
+                        await window.loadData();
+                    }
                 }
             });
         });
